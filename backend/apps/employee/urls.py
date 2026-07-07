@@ -1,3 +1,6 @@
 from django.urls import path
+from .views import EmployeeDashboardView
 
-urlpatterns = []
+urlpatterns = [
+    path('dashboard/', EmployeeDashboardView.as_view()),
+]
