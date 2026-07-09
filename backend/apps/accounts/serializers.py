@@ -19,10 +19,25 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     company_name = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField()
+    office_phone = serializers.SerializerMethodField()
+    official_email = serializers.SerializerMethodField()
+    linkedin_id = serializers.SerializerMethodField()
+    industry = serializers.SerializerMethodField()
+    company_size = serializers.SerializerMethodField()
+    website = serializers.SerializerMethodField()
+    facebook = serializers.SerializerMethodField()
+    contact_person = serializers.SerializerMethodField()
+    mobile = serializers.SerializerMethodField()
+    intro = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ("id", "username", "name", "email", "first_name", "last_name", "role", "employee_id", "company_name")
+        fields = (
+            "id", "username", "name", "email", "first_name", "last_name", "role", "employee_id", "company_name",
+            "address", "office_phone", "official_email", "linkedin_id", "industry", "company_size", "website",
+            "facebook", "contact_person", "mobile", "intro"
+        )
 
     def get_name(self, obj):
         full_name = obj.get_full_name()
@@ -32,12 +47,51 @@ class UserSerializer(serializers.ModelSerializer):
             return obj.username
         return obj.email
 
+    def _get_profile_field(self, obj, field_name, default=""):
+        profile = getattr(obj, "employee_profile", None)
+        if profile:
+            return getattr(profile, field_name, default) or default
+        return default
+
     def get_company_name(self, obj):
         # Prefer company stored on EmployeeProfile, fallback to user.company
         profile = getattr(obj, "employee_profile", None)
         if profile and getattr(profile, "company_name", None):
             return profile.company_name
-        return getattr(obj, "company", None)
+        return getattr(obj, "company", None) or ""
+
+    def get_address(self, obj):
+        return self._get_profile_field(obj, "address")
+
+    def get_office_phone(self, obj):
+        return self._get_profile_field(obj, "office_phone")
+
+    def get_official_email(self, obj):
+        return self._get_profile_field(obj, "official_email", default=obj.email)
+
+    def get_linkedin_id(self, obj):
+        return self._get_profile_field(obj, "linkedin_id")
+
+    def get_industry(self, obj):
+        return self._get_profile_field(obj, "industry", default="Automobile")
+
+    def get_company_size(self, obj):
+        return self._get_profile_field(obj, "company_size")
+
+    def get_website(self, obj):
+        return self._get_profile_field(obj, "website")
+
+    def get_facebook(self, obj):
+        return self._get_profile_field(obj, "facebook")
+
+    def get_contact_person(self, obj):
+        return self._get_profile_field(obj, "contact_person", default=obj.get_full_name() or obj.username)
+
+    def get_mobile(self, obj):
+        return self._get_profile_field(obj, "mobile", default=self._get_profile_field(obj, "phone_number"))
+
+    def get_intro(self, obj):
+        return self._get_profile_field(obj, "intro")
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -153,3 +207,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         }
         data["user"] = UserSerializer(user).data
         return data
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
