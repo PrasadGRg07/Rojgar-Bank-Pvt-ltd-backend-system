@@ -6,6 +6,10 @@ class CustomUser(AbstractUser):
         EMPLOYEE = "employee", "Employee"
         ADMIN = "admin", "Admin"
         SUPERADMIN = "superadmin", "Super Admin"
+        JOBSEEKER = "jobseeker", "Job Seeker"
+
+    # Override email field
+  #  email = models.EmailField(unique=True)
         
         
 

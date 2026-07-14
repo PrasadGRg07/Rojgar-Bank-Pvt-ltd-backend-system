@@ -144,19 +144,33 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
 
         profile_defaults = {}
+
         if company_name:
             profile_defaults["company_name"] = company_name
+
         if phone_number:
             profile_defaults["phone_number"] = phone_number
 
-        if profile_defaults:
+        if user.role == User.Role.EMPLOYEE:
             try:
                 from apps.employee.models import EmployeeProfile
-                EmployeeProfile.objects.update_or_create(user=user, defaults=profile_defaults)
+
+                EmployeeProfile.objects.update_or_create(
+                    user=user,
+                    defaults=profile_defaults,
+                )
             except Exception:
                 if company_name:
                     user.company = company_name
                     user.save()
+
+        elif user.role == User.Role.JOBSEEKER:
+            try:
+                from apps.jobseeker.models import JobSeekerProfile
+
+                JobSeekerProfile.objects.get_or_create(user=user)
+            except Exception as e:
+                print(e)
 
         return user
 

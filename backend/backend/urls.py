@@ -11,6 +11,10 @@ urlpatterns = [
 
     # Employee APIs
     path("api/employee/", include("apps.employee.urls")),
+    # Admin APIs
+    path("api/admin/", include("apps.adminpanel.urls")),
+    # Job Seeker APIs
+    path("api/jobseeker/", include("apps.jobseeker.urls")),
 ]
 
 # Serve uploaded media files during development

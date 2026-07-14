@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     
     "apps.accounts",
     "apps.employee",
+    'apps.adminpanel',
+    'apps.jobseeker'
 ]
 AUTH_USER_MODEL = "accounts.CustomUser"
 CORS_ALLOWED_ORIGINS = [
