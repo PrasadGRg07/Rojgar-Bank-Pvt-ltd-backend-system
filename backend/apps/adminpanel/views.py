@@ -1,9 +1,18 @@
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.generics import (
+    ListCreateAPIView,
+    RetrieveUpdateDestroyAPIView,
+)
+from rest_framework.permissions import IsAuthenticated
 
+from .serializers import AdminUserSerializer
+
+
+User = get_user_model()
 
 class AdminLoginView(APIView):
     authentication_classes = []
@@ -49,3 +58,18 @@ class AdminLoginView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+# User CRUD operations
+class UserListCreateView(ListCreateAPIView):
+
+    serializer_class = AdminUserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.all().order_by("-id")
+    
+class UserDetailView(RetrieveUpdateDestroyAPIView):
+
+    serializer_class = AdminUserSerializer
+    permission_classes = [IsAuthenticated]
+
+    queryset = User.objects.all()

@@ -44,7 +44,12 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.employee",
     'apps.adminpanel',
-    'apps.jobseeker'
+    'apps.jobseeker',
+    "apps.blog",
+    "apps.training",
+    "apps.events",
+    "apps.superadmin",
+
 ]
 AUTH_USER_MODEL = "accounts.CustomUser"
 CORS_ALLOWED_ORIGINS = [

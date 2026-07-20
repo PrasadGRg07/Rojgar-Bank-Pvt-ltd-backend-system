@@ -183,3 +183,21 @@ class Portfolio(models.Model):
 
     def __str__(self):
         return self.title
+
+#==============Notication===============
+class NotificationSettings(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notification_settings",
+    )
+
+    email = models.BooleanField(default=True)
+    jobs = models.BooleanField(default=True)
+    applications = models.BooleanField(default=True)
+    marketing = models.BooleanField(default=False)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} Notification Settings"

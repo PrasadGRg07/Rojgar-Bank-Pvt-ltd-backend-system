@@ -6,7 +6,8 @@ from .views import (
     ChangePasswordView,
     UpdateProfileView,
     UpdateEmailView,
-    SendOTPView
+    SendOTPView,
+    MeView
 )
 
 urlpatterns = [
@@ -18,4 +19,5 @@ urlpatterns = [
     path("update-profile/", UpdateProfileView.as_view(), name="update_profile"),
     path("update-email/", UpdateEmailView.as_view(), name="update_email"),
     path("send-otp/", SendOTPView.as_view(), name="send_otp"),
+    path("me/", MeView.as_view(), name="me"),
 ]

@@ -31,6 +31,8 @@ class RegisterView(APIView):
                 "message": "Registered successfully",
                 "user": {
                     "id": user.id,
+                     "first_name": user.first_name,
+                     "last_name": user.last_name,
                     "email": user.email,
                     "role": user.role,
                     "company_name": profile.company_name if profile else getattr(user, 'company', None),
@@ -137,3 +139,9 @@ class SendOTPView(APIView):
         profile.save()
 
         return Response({"detail": "OTP sent successfully."}, status=status.HTTP_200_OK)
+    
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(UserSerializer(request.user).data)

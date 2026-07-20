@@ -1,4 +1,6 @@
 from rest_framework import generics, permissions, status
+
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -6,11 +8,12 @@ from .models import JobSeekerProfile, Skill, Education, Experience, Certificatio
 from .serializers import( JobSeekerProfileSerializer, SkillSerializer, 
                          CertificationSerializer,
                          EducationSerializer, ExperienceSerializer,
-                         PortfolioSerializer, ResumeSerializer )
+                         PortfolioSerializer, ResumeSerializer, AccountSettingsSerializer )
 
 from django.shortcuts import get_object_or_404
 
 # JobSeekerProfile views
+#==================================SKILLS======================================================
 class SkillListCreateView(generics.ListCreateAPIView):
     serializer_class = SkillSerializer
     permission_classes = [IsAuthenticated]
@@ -29,8 +32,10 @@ class SkillDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_queryset(self):
         profile = JobSeekerProfile.objects.get(user=self.request.user)
-        return Skill.object.filter(profile=profile)
+        return Skill.objects.filter(profile=profile)
     
+    
+#=============================PROFILE=========================
 class JobSeekerProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = JobSeekerProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -40,6 +45,11 @@ class JobSeekerProfileView(generics.RetrieveUpdateAPIView):
             user=self.request.user
         )
         return profile
+    
+    
+    
+    
+#=======================================EDUCATION====================================
 class EducationListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -133,6 +143,9 @@ class EducationDetailView(APIView):
         return Response(
             status=status.HTTP_204_NO_CONTENT,
         )
+
+
+#++++++++++++++++++++++EXPERIENCES++++++++++++++++++++++++++++++++++++
 class ExperienceListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -227,6 +240,8 @@ class ExperienceDetailView(APIView):
         return Response(
             status=status.HTTP_204_NO_CONTENT,
         )
+
+#======================CERTIFICATION===========================================
 class CertificationListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -320,6 +335,8 @@ class CertificationDetailView(APIView):
         return Response(
             status=status.HTTP_204_NO_CONTENT,
         )
+        
+        #================PORTFOLIO============================================
 class PortfolioListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -412,6 +429,7 @@ class PortfolioDetailView(APIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+ #==================RESUME========================   
 class ResumeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -461,4 +479,49 @@ class ResumeDeleteView(APIView):
         return Response(
             {"message": "Resume deleted successfully."},
             status=status.HTTP_200_OK,
+        )
+#===========Settings(Account)===================================
+class AccountSettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            profile = JobSeekerProfile.objects.get(user=request.user)
+        except JobSeekerProfile.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AccountSettingsSerializer(profile)
+        return Response(serializer.data)
+
+    def put(self, request):
+        try:
+            profile = JobSeekerProfile.objects.get(user=request.user)
+        except JobSeekerProfile.DoesNotExist:
+            return Response(
+                {"error": "Job seeker profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AccountSettingsSerializer(
+            profile,
+            data=request.data,
+            partial=True,
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "Account settings updated successfully.",
+                    "data": serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
         )

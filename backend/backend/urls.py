@@ -13,8 +13,14 @@ urlpatterns = [
     path("api/employee/", include("apps.employee.urls")),
     # Admin APIs
     path("api/admin/", include("apps.adminpanel.urls")),
+    #Super Admin APIs
+    path("api/superadmin/", include("apps.superadmin.urls")),
     # Job Seeker APIs
     path("api/jobseeker/", include("apps.jobseeker.urls")),
+    # homes api 
+    path('api/blog/', include('apps.blog.urls')),
+    path('api/training/', include('apps.training.urls')),
+    path('api/events/', include('apps.events.urls')),
 ]
 
 # Serve uploaded media files during development

@@ -1,9 +1,10 @@
 from django.urls import path
+from .firebase_views import test_firestore
 from .views import( JobSeekerProfileView, SkillListCreateView, 
                    SkillDetailView, EducationListCreateView, 
                    EducationDetailView, ExperienceDetailView, ExperienceListCreateView,
                    CertificationDetailView, CertificationListCreateView, PortfolioListCreateView,
-                   PortfolioDetailView, ResumeView, ResumeUploadView, ResumeDeleteView )
+                   PortfolioDetailView, ResumeView, ResumeUploadView, ResumeDeleteView, AccountSettingsView )
 
 
 urlpatterns = [
@@ -21,6 +22,8 @@ urlpatterns = [
     path('resumes/', ResumeView.as_view(), name='resume-list-create'),
     path('resumes/upload/', ResumeUploadView.as_view(), name='resume-upload'),
     path('resumes/delete/', ResumeDeleteView.as_view(), name='resume-delete'),
+    path("firebase-test/", test_firestore, name="firebase-test"),
+    path('account-settings/', AccountSettingsView.as_view(), name='account-settings')
 
 
     

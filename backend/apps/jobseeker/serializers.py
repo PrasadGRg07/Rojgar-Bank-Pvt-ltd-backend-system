@@ -60,26 +60,19 @@ class CertificationSerializer(serializers.ModelSerializer):
         model = Certification
         fields = "__all__"
         read_only_fields = ["id", "profile"]
-        
-class ExperienceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Experience
-        fields = [
-            "id",
-            "company",
-            "position",
-            "employment_type",
-            "start_date",
-            "end_date",
-            "currently_working",
-            "description",
-        ]
+
 
 class ExperienceSerializer(serializers.ModelSerializer):
+    end_date = serializers.DateField(
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = Experience
         fields = "__all__"
         read_only_fields = ["id", "profile"]
+
         
 
 class PortfolioSerializer(serializers.ModelSerializer):
@@ -95,6 +88,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
             "image",
             "technologies",
             "created_at",
+
         ]
         read_only_fields = ["id", "created_at"]
 
@@ -210,3 +204,53 @@ class ResumeSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.resume.url)
 
         return None
+    
+   #===========Acount Settings ========
+class AccountSettingsSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(
+        source="user.first_name",
+        required=False,
+    )
+
+    last_name = serializers.CharField(
+        source="user.last_name",
+        required=False,
+    )
+
+    email = serializers.EmailField(
+        source="user.email",
+        required=False,
+    )
+
+    class Meta:
+        model = JobSeekerProfile
+        fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "address",
+        ]
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", {})
+
+        user = instance.user
+
+        if "first_name" in user_data:
+            user.first_name = user_data["first_name"]
+
+        if "last_name" in user_data:
+            user.last_name = user_data["last_name"]
+
+        if "email" in user_data:
+            user.email = user_data["email"]
+
+        user.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        return instance
