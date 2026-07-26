@@ -6,6 +6,7 @@ from .models import (
     Experience,
     Certification,
     Portfolio,
+    JobApplication,
     
 )
 class SkillSerializer(serializers.ModelSerializer):
@@ -254,3 +255,46 @@ class AccountSettingsSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+    
+class JobApplicationSerializer(serializers.ModelSerializer):
+    job_title = serializers.CharField(
+        source="job.title",
+        read_only=True,
+    )
+
+    company = serializers.CharField(
+        source="job.user.company",
+        read_only=True,
+    )
+
+    applicant_name = serializers.CharField(
+        source="applicant.username",
+        read_only=True,
+    )
+
+    class Meta:
+        model = JobApplication
+
+        fields = [
+            "id",
+            "job",
+            "applicant",
+            "applicant_name",
+            "job_title",
+            "company",
+            "cover_letter",
+            "resume",
+            "status",
+            "applied_at",
+        ]
+
+        read_only_fields = (
+    "id",
+    "job",
+    "applicant",
+    "applicant_name",
+    "job_title",
+    "company",
+    "status",
+    "applied_at",
+)

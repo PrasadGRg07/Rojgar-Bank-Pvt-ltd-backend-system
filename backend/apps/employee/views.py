@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import EmployeeProfile, Job
-from .serializers import JobSerializer
-
+from apps.jobseeker.models import JobApplication
+from .serializers import ( JobSerializer, EmployeeJobApplicationSerializer, )
+from django.shortcuts import get_object_or_404
 class EmployeeDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -36,4 +37,110 @@ class JobListCreateView(ListCreateAPIView):
         return Job.objects.filter(user=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+            serializer.save(
+                user=self.request.user,
+                status="draft"
+            )
+
+class SubmitJobForReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        job = get_object_or_404(
+            Job,
+            pk=pk,
+            user=request.user
+        )
+
+        if job.status != "draft":
+            return Response(
+                {"message": "Only draft jobs can be submitted."},
+                status=400,
+            )
+
+        job.status = "pending"
+        job.save()
+
+        return Response({
+            "message": "Job submitted for admin review."
+        })
+class JobDetailView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = JobSerializer
+
+    def get_queryset(self):
+        return Job.objects.filter(user=self.request.user)
+    
+class ApplicantsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, job_id):
+        job = get_object_or_404(
+            Job,
+            pk=job_id,
+            user=request.user,
+        )
+
+        applications = JobApplication.objects.filter(
+            job=job
+        ).order_by("-applied_at")
+
+        serializer = EmployeeJobApplicationSerializer(
+            applications,
+            many=True,
+        )
+
+        return Response(serializer.data)
+    
+class ApplicantDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        application = get_object_or_404(
+            JobApplication,
+            pk=pk,
+            job__user=request.user,
+        )
+
+        serializer = EmployeeJobApplicationSerializer(
+            application
+        )
+
+        return Response(serializer.data)
+    
+class UpdateApplicationStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        application = get_object_or_404(
+            JobApplication,
+            pk=pk,
+            job__user=request.user,
+        )
+
+        status_value = request.data.get("status")
+
+        allowed = [
+            "pending",
+            "reviewing",
+            "shortlisted",
+            "rejected",
+            "hired",
+        ]
+
+        if status_value not in allowed:
+            return Response(
+                {
+                    "message": "Invalid status."
+                },
+                status=400,
+            )
+
+        application.status = status_value
+        application.save()
+
+        serializer = EmployeeJobApplicationSerializer(
+            application
+        )
+
+        return Response(serializer.data)

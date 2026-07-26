@@ -4,7 +4,8 @@ from .views import( JobSeekerProfileView, SkillListCreateView,
                    SkillDetailView, EducationListCreateView, 
                    EducationDetailView, ExperienceDetailView, ExperienceListCreateView,
                    CertificationDetailView, CertificationListCreateView, PortfolioListCreateView,
-                   PortfolioDetailView, ResumeView, ResumeUploadView, ResumeDeleteView, AccountSettingsView )
+                   PortfolioDetailView, ResumeView, ResumeUploadView, ResumeDeleteView, AccountSettingsView, 
+                   ApplyJobView, MyApplicationsView, ApplicationDetailView, JobListView, JobDetailView,)
 
 
 urlpatterns = [
@@ -23,7 +24,13 @@ urlpatterns = [
     path('resumes/upload/', ResumeUploadView.as_view(), name='resume-upload'),
     path('resumes/delete/', ResumeDeleteView.as_view(), name='resume-delete'),
     path("firebase-test/", test_firestore, name="firebase-test"),
-    path('account-settings/', AccountSettingsView.as_view(), name='account-settings')
+    path('account-settings/', AccountSettingsView.as_view(), name='account-settings'),
+    
+    path("jobs/", JobListView.as_view(), name="job-list"),
+    path("jobs/<int:pk>/", JobDetailView.as_view(), name="job-detail"),
+    path("jobs/<int:pk>/apply/", ApplyJobView.as_view(), name="apply-job"),
+    path("applications/", MyApplicationsView.as_view(), name="my-applications"),
+    path("applications/<int:pk>/", ApplicationDetailView.as_view(), name="application-detail"),
 
 
     

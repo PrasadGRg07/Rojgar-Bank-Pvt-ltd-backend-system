@@ -4,14 +4,15 @@ from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import JobSeekerProfile, Skill, Education, Experience, Certification
+
+from .models import JobSeekerProfile, Skill, Education, Experience, Certification, Portfolio, JobApplication
 from .serializers import( JobSeekerProfileSerializer, SkillSerializer, 
                          CertificationSerializer,
                          EducationSerializer, ExperienceSerializer,
-                         PortfolioSerializer, ResumeSerializer, AccountSettingsSerializer )
-
+                         PortfolioSerializer, ResumeSerializer, AccountSettingsSerializer, JobApplicationSerializer )
+from apps.employee.models import Job
+from apps.employee.serializers import JobSerializer
 from django.shortcuts import get_object_or_404
-
 # JobSeekerProfile views
 #==================================SKILLS======================================================
 class SkillListCreateView(generics.ListCreateAPIView):
@@ -525,3 +526,67 @@ class AccountSettingsView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
         )
+        
+class ApplyJobView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        job = get_object_or_404(
+            Job,
+            pk=pk,
+            status="approved"
+        )
+
+        serializer = JobApplicationSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(
+                applicant=request.user,
+                job=job,
+            )
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+            )
+
+        print(serializer.errors)   # <-- Add this
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+class MyApplicationsView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = JobApplicationSerializer
+
+    def get_queryset(self):
+        return JobApplication.objects.filter(
+            applicant=self.request.user
+        )
+class ApplicationDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = JobApplicationSerializer
+
+    def get_queryset(self):
+        return JobApplication.objects.filter(
+            applicant=self.request.user
+        )
+class JobListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = JobSerializer
+
+    def get_queryset(self):
+        return Job.objects.filter(
+            status="approved"
+        ).order_by("-created_at")
+
+
+class JobDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = JobSerializer
+
+    queryset = Job.objects.filter(
+        status="approved"
+    )
