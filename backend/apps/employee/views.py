@@ -15,6 +15,20 @@ class EmployeeDashboardView(APIView):
 
         profile = getattr(request.user, 'employee_profile', None)
         total_jobs = Job.objects.filter(user=request.user).count()
+        active_jobs = Job.objects.filter(user=request.user, status='approved').count()
+        total_applicants = JobApplication.objects.filter(job__user=request.user).count()
+        shortlisted_applicants = JobApplication.objects.filter(job__user=request.user, status='shortlisted').count()
+
+        recent_applications_qs = JobApplication.objects.filter(job__user=request.user).order_by('-applied_at')[:5]
+        recent_applications = []
+        for app in recent_applications_qs:
+            recent_applications.append({
+                'id': app.id,
+                'name': app.applicant.get_full_name() or app.applicant.username,
+                'position': app.job.title,
+                'date': app.applied_at.strftime('%Y-%m-%d'),
+                'status': app.status.capitalize(),
+            })
 
         return Response({
             'message': f'Welcome {request.user.get_full_name() or request.user.username}',
@@ -23,9 +37,10 @@ class EmployeeDashboardView(APIView):
             'designation': profile.designation if profile else None,
             'company_name': profile.company_name if profile else getattr(request.user, 'company', None),
             'total_jobs': total_jobs,
-            'active_jobs': total_jobs,
-            'total_applicants': 0,
-            'shortlisted_applicants': 0,
+            'active_jobs': active_jobs,
+            'total_applicants': total_applicants,
+            'shortlisted_applicants': shortlisted_applicants,
+            'recent_applications': recent_applications,
         })
 
 
