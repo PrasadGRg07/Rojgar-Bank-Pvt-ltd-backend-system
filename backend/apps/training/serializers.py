@@ -11,6 +11,7 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "title",
+            "image",
             "course_name",
             "description",
             "trainer_name",

@@ -4,6 +4,7 @@ from django.db import models
 
 class TrainingSession(models.Model):
     title = models.CharField(max_length=255)
+    image = models.ImageField(upload_to="training/", blank=True, null=True)
     course_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     trainer_name = models.CharField(max_length=255, blank=True)

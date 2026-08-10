@@ -232,11 +232,25 @@ class JobApplication(models.Model):
         null=True,
     )
 
+    certificates = models.FileField(
+        upload_to="job_applications/certificates/",
+        blank=True,
+        null=True,
+    )
+
+    citizenship_copy = models.FileField(
+        upload_to="job_applications/citizenship/",
+        blank=True,
+        null=True,
+    )
+
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default="pending",
     )
+
+    rejection_reason = models.TextField(blank=True, null=True)
 
     applied_at = models.DateTimeField(auto_now_add=True)
 
@@ -246,3 +260,24 @@ class JobApplication(models.Model):
 
     def __str__(self):
         return f"{self.applicant.username} -> {self.job.title}"
+
+# ===================== Saved Jobs =====================
+class SavedJob(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_jobs"
+    )
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        related_name="saved_by_users"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "job")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} saved {self.job.title}"

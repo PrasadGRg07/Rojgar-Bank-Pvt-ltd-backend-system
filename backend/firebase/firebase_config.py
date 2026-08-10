@@ -1,14 +1,19 @@
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
+service_key_path = BASE_DIR / "serviceAccountKey.json"
 
-cred = credentials.Certificate(
-    BASE_DIR / "serviceAccountKey.json"
-)
+db = None
 
-firebase_admin.initialize_app(cred)
+try:
+    import firebase_admin
+    from firebase_admin import credentials, firestore
 
-db = firestore.client()
+    if service_key_path.exists():
+        if not firebase_admin._apps:
+            cred = credentials.Certificate(service_key_path)
+            firebase_admin.initialize_app(cred)
+        db = firestore.client()
+except Exception as e:
+    print(f"Warning: Firebase Admin initialization skipped: {e}")

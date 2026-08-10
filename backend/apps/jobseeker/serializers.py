@@ -284,6 +284,9 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             "company",
             "cover_letter",
             "resume",
+            "certificates",
+            "citizenship_copy",
+            "rejection_reason",
             "status",
             "applied_at",
         ]
@@ -298,3 +301,14 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     "status",
     "applied_at",
 )
+
+from apps.employee.serializers import JobSerializer
+from .models import SavedJob
+
+class SavedJobSerializer(serializers.ModelSerializer):
+    job = JobSerializer(read_only=True)
+
+    class Meta:
+        model = SavedJob
+        fields = ["id", "job", "created_at"]
+        read_only_fields = ["id", "job", "created_at"]

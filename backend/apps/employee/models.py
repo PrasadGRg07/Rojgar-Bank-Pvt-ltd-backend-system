@@ -232,3 +232,65 @@ class Job(models.Model):
     def __str__(self):
         return self.title
   
+
+class Subscription(models.Model):
+    PLAN_CHOICES = [
+        ("free", "Free"),
+        ("basic", "Basic"),
+        ("professional", "Professional"),
+        ("enterprise", "Enterprise"),
+    ]
+    STATUS_CHOICES = [
+        ("pending", "Pending Review"),
+        ("forwarded", "Forwarded to Superadmin"),
+        ("active", "Active"),
+        ("expired", "Expired"),
+        ("rejected", "Rejected"),
+    ]
+    # Duration in days for each plan
+    PLAN_DURATION_DAYS = {
+        "free": None,          # Never expires
+        "basic": 30,
+        "professional": 30,
+        "enterprise": 365,
+    }
+
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="subscriptions"
+    )
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_slip = models.ImageField(upload_to="payment_slips/", blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    admin_note = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="reviewed_subscriptions"
+    )
+    activated_by = models.ForeignKey(
+        CustomUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="activated_subscriptions"
+    )
+    rejection_reason = models.TextField(blank=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.plan} ({self.status})"
+
+    def check_and_expire(self):
+        """
+        If this subscription is active and past its expiry date,
+        mark it expired and save. Returns True if it was just expired.
+        """
+        from django.utils import timezone
+        if self.status == "active" and self.expires_at and timezone.now() > self.expires_at:
+            self.status = "expired"
+            self.save(update_fields=["status", "updated_at"])
+            return True
+        return False
