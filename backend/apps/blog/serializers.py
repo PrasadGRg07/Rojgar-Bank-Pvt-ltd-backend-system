@@ -5,7 +5,10 @@ from .models import BlogArticle
 class BlogArticleSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
     is_published = serializers.BooleanField(default=True, required=False)
-    cover_image = serializers.SerializerMethodField()
+    # Write field — accepts uploaded file on POST/PUT
+    cover_image = serializers.ImageField(required=False, allow_null=True, write_only=False)
+    # Read field — returns a full absolute URL
+    cover_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = BlogArticle
@@ -15,6 +18,7 @@ class BlogArticleSerializer(serializers.ModelSerializer):
             "slug",
             "content",
             "cover_image",
+            "cover_image_url",
             "author_name",
             "is_published",
             "created_at",
@@ -27,7 +31,7 @@ class BlogArticleSerializer(serializers.ModelSerializer):
             return None
         return obj.author.get_full_name() or obj.author.username
 
-    def get_cover_image(self, obj):
+    def get_cover_image_url(self, obj):
         if not obj.cover_image:
             return None
         url = obj.cover_image.url

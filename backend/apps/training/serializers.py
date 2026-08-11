@@ -3,9 +3,11 @@ from .models import TrainingSession, TrainingEnrollment
 
 
 class TrainingSessionSerializer(serializers.ModelSerializer):
-    # See BlogArticleSerializer.is_published for why this is declared explicitly.
     is_active = serializers.BooleanField(default=True, required=False)
-    image = serializers.SerializerMethodField()
+    # Write field — accepts uploaded file on POST/PUT
+    image = serializers.ImageField(required=False, allow_null=True, write_only=False)
+    # Read field — returns a full absolute URL
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainingSession
@@ -13,6 +15,7 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "image",
+            "image_url",
             "course_name",
             "description",
             "trainer_name",
@@ -25,7 +28,7 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("created_at",)
 
-    def get_image(self, obj):
+    def get_image_url(self, obj):
         if not obj.image:
             return None
         url = obj.image.url
