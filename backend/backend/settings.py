@@ -68,6 +68,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.rojgar-bank.com",
     "http://rojgar-bank.com",
     "http://www.rojgar-bank.com",
+    "https://rojgarbank.vercel.app",
 ]
 
 extra_cors = os.environ.get('CORS_ALLOWED_ORIGINS')
@@ -87,6 +88,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.rojgar-bank.com",
     "http://rojgar-bank.com",
     "http://www.rojgar-bank.com",
+    "https://rojgarbank.vercel.app",
 ]
 
 extra_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS')
