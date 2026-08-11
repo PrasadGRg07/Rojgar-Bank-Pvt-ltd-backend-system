@@ -1,5 +1,6 @@
 from rest_framework import generics, parsers
 from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.accounts.permissions import IsAdminOrSuperAdmin
 from .models import BlogArticle
@@ -9,6 +10,13 @@ from .serializers import BlogArticleSerializer
 class BlogArticleListCreateView(generics.ListCreateAPIView):
     serializer_class = BlogArticleSerializer
     parser_classes = [parsers.JSONParser, parsers.FormParser, parsers.MultiPartParser]
+
+    def get_authenticators(self):
+        # Only run JWT authentication for write operations.
+        # For GET, skip strict auth so an invalid/expired token doesn't cause 401.
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            return [JWTAuthentication()]
+        return []
 
     def get_permissions(self):
         if self.request.method == "POST":

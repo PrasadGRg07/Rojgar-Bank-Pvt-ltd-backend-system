@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.training",
     "apps.events",
     "apps.superadmin",
+    "apps.messaging",
 
 ]
 AUTH_USER_MODEL = "accounts.CustomUser"

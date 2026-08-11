@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
-from rest_framework.generics import ListCreateAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListCreateAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import EmployeeProfile, Job
-from apps.jobseeker.models import JobApplication
-from .serializers import ( JobSerializer, EmployeeJobApplicationSerializer, )
+from rest_framework import status, parsers
+from .models import EmployeeProfile, Job, Subscription, SavedCandidate
+from apps.jobseeker.models import JobApplication, JobSeekerProfile
+from .serializers import ( JobSerializer, EmployeeJobApplicationSerializer, CandidateProfileSerializer, SavedCandidateSerializer )
 from django.shortcuts import get_object_or_404
 class EmployeeDashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -152,6 +153,12 @@ class UpdateApplicationStatusView(APIView):
             )
 
         application.status = status_value
+        
+        if status_value == "rejected":
+            application.rejection_reason = request.data.get("rejection_reason")
+        else:
+            application.rejection_reason = None
+
         application.save()
 
         serializer = EmployeeJobApplicationSerializer(
@@ -159,3 +166,93 @@ class UpdateApplicationStatusView(APIView):
         )
 
         return Response(serializer.data)
+
+class CandidateListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CandidateProfileSerializer
+
+    def get_queryset(self):
+        return JobSeekerProfile.objects.filter(
+            user__role="jobseeker"
+        ).order_by("-created_at")
+
+class CandidateDetailView(RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CandidateProfileSerializer
+    lookup_field = "user_id"
+
+    def get_queryset(self):
+        return JobSeekerProfile.objects.filter(user__role="jobseeker")
+
+
+class SubscriptionCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+
+    def post(self, request):
+        plan = request.data.get('plan')
+        amount = request.data.get('amount', 0)
+        slip = request.FILES.get('payment_slip')
+
+        if not plan:
+            return Response({'detail': 'Plan is required.'}, status=400)
+
+        sub = Subscription.objects.create(
+            user=request.user,
+            plan=plan,
+            amount=amount,
+            payment_slip=slip,
+            status='pending',
+        )
+        return Response({'message': 'Subscription created successfully. Awaiting approval.', 'id': sub.id}, status=201)
+
+    def get(self, request):
+        from django.utils import timezone
+        subs = Subscription.objects.filter(user=request.user)
+        data = []
+        for s in subs:
+            # Auto-expire check on every fetch
+            s.check_and_expire()
+            days_remaining = None
+            if s.expires_at and s.status == 'active':
+                delta = s.expires_at - timezone.now()
+                days_remaining = max(0, delta.days)
+            data.append({
+                'id': s.id,
+                'plan': s.plan,
+                'amount': str(s.amount),
+                'status': s.status,
+                'status_display': s.get_status_display(),
+                'rejection_reason': s.rejection_reason,
+                'activated_at': s.activated_at.strftime('%Y-%m-%d') if s.activated_at else None,
+                'expires_at': s.expires_at.strftime('%Y-%m-%d') if s.expires_at else None,
+                'days_remaining': days_remaining,
+                'created_at': s.created_at.strftime('%Y-%m-%d'),
+            })
+        return Response(data)
+
+class SavedCandidateListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SavedCandidateSerializer
+
+    def get_queryset(self):
+        return SavedCandidate.objects.filter(user=self.request.user)
+
+class SavedCandidateToggleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, candidate_id):
+        # Using candidate_id to fetch the JobSeekerProfile
+        candidate = get_object_or_404(JobSeekerProfile, user_id=candidate_id)
+
+        saved_candidate, created = SavedCandidate.objects.get_or_create(
+            user=request.user,
+            candidate=candidate
+        )
+
+        if not created:
+            # If it already existed, remove it (toggle)
+            saved_candidate.delete()
+            return Response({"message": "Candidate removed from saved list", "is_saved": False}, status=status.HTTP_200_OK)
+        
+        return Response({"message": "Candidate saved successfully", "is_saved": True}, status=status.HTTP_201_CREATED)

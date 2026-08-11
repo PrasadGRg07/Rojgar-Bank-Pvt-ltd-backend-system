@@ -537,6 +537,13 @@ class ApplyJobView(APIView):
             status="approved"
         )
 
+        # Check if already applied
+        if JobApplication.objects.filter(job=job, applicant=request.user).exists():
+            return Response(
+                {"already_applied": True, "detail": "You have already applied for this job."},
+                status=status.HTTP_200_OK,
+            )
+
         serializer = JobApplicationSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -550,7 +557,7 @@ class ApplyJobView(APIView):
                 status=status.HTTP_201_CREATED,
             )
 
-        print(serializer.errors)   # <-- Add this
+        print(serializer.errors)
 
         return Response(
             serializer.errors,
@@ -590,3 +597,75 @@ class JobDetailView(generics.RetrieveAPIView):
     queryset = Job.objects.filter(
         status="approved"
     )
+
+# ===================== Saved Jobs =====================
+from .models import SavedJob
+from .serializers import SavedJobSerializer
+
+class SavedJobListView(generics.ListAPIView):
+    serializer_class = SavedJobSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SavedJob.objects.filter(user=self.request.user)
+
+class SavedJobToggleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, job_id):
+        job = get_object_or_404(Job, pk=job_id)
+        saved_job = SavedJob.objects.filter(user=request.user, job=job).first()
+        
+        if saved_job:
+            saved_job.delete()
+            return Response({"status": "unsaved"}, status=status.HTTP_200_OK)
+        else:
+            SavedJob.objects.create(user=request.user, job=job)
+            return Response({"status": "saved"}, status=status.HTTP_201_CREATED)
+from apps.employee.models import EmployeeProfile
+
+class EmployerProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            profile = EmployeeProfile.objects.get(user__id=pk)
+            data = {
+                "id": profile.user.id,
+                "company_name": profile.company_name,
+                "email": profile.user.email,
+                "profile_picture": request.build_absolute_uri(profile.profile_picture.url) if profile.profile_picture else None,
+                "address": profile.address,
+                "website": profile.website,
+                "industry": profile.industry,
+                "company_size": profile.company_size,
+                "contact_person": profile.contact_person,
+                "intro": profile.intro,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except EmployeeProfile.DoesNotExist:
+            return Response({"error": "Employer profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+# ===================== Public Jobs (no auth required) =====================
+from rest_framework.permissions import AllowAny
+
+class PublicJobListView(generics.ListAPIView):
+    """Public endpoint: returns latest approved jobs for the home page."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    serializer_class = JobSerializer
+
+    def get_queryset(self):
+        return Job.objects.filter(
+            status="approved"
+        ).order_by("-created_at")[:6]
+
+class PublicJobDetailView(generics.RetrieveAPIView):
+    """Public endpoint: returns details of a specific approved job."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    serializer_class = JobSerializer
+    queryset = Job.objects.filter(status="approved")
+
+

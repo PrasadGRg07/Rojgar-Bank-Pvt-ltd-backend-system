@@ -67,6 +67,40 @@ class UpdateProfileView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [parsers.JSONParser, parsers.FormParser, parsers.MultiPartParser]
 
+    def get(self, request):
+        user = request.user
+        from apps.employee.models import EmployeeProfile
+        profile = getattr(user, 'employee_profile', None)
+
+        # Build absolute URL for profile picture
+        profile_picture_url = None
+        if profile and profile.profile_picture:
+            try:
+                profile_picture_url = request.build_absolute_uri(profile.profile_picture.url)
+            except Exception:
+                profile_picture_url = None
+
+        return Response({
+            "username": user.username,
+            "email": user.email,
+            "company_name": profile.company_name if profile else (user.company or ""),
+            "address": profile.address if profile else "",
+            "office_phone": profile.office_phone if profile else "",
+            "official_email": profile.official_email if profile else "",
+            "linkedin_id": profile.linkedin_id if profile else "",
+            "industry": profile.industry if profile else "",
+            "company_size": profile.company_size if profile else "",
+            "website": profile.website if profile else "",
+            "facebook": profile.facebook if profile else "",
+            "contact_person": profile.contact_person if profile else "",
+            "mobile": profile.mobile if profile else "",
+            "phone_number": profile.phone_number if profile else "",
+            "intro": profile.intro if profile else "",
+            "designation": profile.designation if profile else "",
+            "department": profile.department if profile else "",
+            "profile_picture": profile_picture_url,
+        })
+
     def patch(self, request):
         user = request.user
         from apps.employee.models import EmployeeProfile

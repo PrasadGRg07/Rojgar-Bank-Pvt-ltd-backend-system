@@ -21,6 +21,8 @@ urlpatterns = [
     path('api/blog/', include('apps.blog.urls')),
     path('api/training/', include('apps.training.urls')),
     path('api/events/', include('apps.events.urls')),
+    # Messaging APIs
+    path("api/messaging/", include("apps.messaging.urls")),
 ]
 
 # Serve uploaded media files during development

@@ -1,6 +1,40 @@
 from rest_framework import serializers
-from .models import Job
-from apps.jobseeker.models import JobApplication
+from .models import Job, SavedCandidate
+from apps.jobseeker.models import JobApplication, JobSeekerProfile, Skill, Education, Experience
+
+class SkillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Skill
+        fields = ["id", "name", "level"]
+
+class EducationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Education
+        fields = ["id", "degree", "institution", "start_year", "end_year", "grade", "description"]
+
+class ExperienceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Experience
+        fields = ["id", "company", "position", "employment_type", "start_date", "end_date", "currently_working", "description"]
+
+class CandidateProfileSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    email = serializers.CharField(source="user.email", read_only=True)
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    skills = SkillSerializer(many=True, read_only=True)
+    educations = EducationSerializer(many=True, read_only=True)
+    experiences = ExperienceSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = JobSeekerProfile
+        fields = [
+            "id", "user_id", "name", "email", "phone", "address", 
+            "profile_picture", "bio", "portfolio", "linkedin", "github",
+            "skills", "educations", "experiences"
+        ]
+        
+    def get_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
 
 class JobSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(
@@ -15,6 +49,10 @@ class JobSerializer(serializers.ModelSerializer):
     source="user.company",
     read_only=True,
 )
+    employer_id = serializers.IntegerField(
+        source="user.id",
+        read_only=True,
+    )
 
     # Basic
     mainCategory = serializers.CharField(source="main_category", required=False, allow_blank=True)
@@ -83,6 +121,7 @@ class JobSerializer(serializers.ModelSerializer):
 
         fields = [
             "id",
+            "employer_id",
             "employee_name",
             "employee_email",
             "company",
@@ -157,6 +196,7 @@ class JobSerializer(serializers.ModelSerializer):
 
         read_only_fields = (
             "id",
+            "employer_id",
             "employee_name",
             "employee_email",
             "company",
@@ -194,6 +234,9 @@ class EmployeeJobApplicationSerializer(serializers.ModelSerializer):
             "applicant_email",
             "cover_letter",
             "resume",
+            "certificates",
+            "citizenship_copy",
+            "rejection_reason",
             "status",
             "applied_at",
         ]
@@ -205,3 +248,11 @@ class EmployeeJobApplicationSerializer(serializers.ModelSerializer):
             "applicant_email",
             "applied_at",
         )
+
+class SavedCandidateSerializer(serializers.ModelSerializer):
+    candidate = CandidateProfileSerializer(read_only=True)
+
+    class Meta:
+        model = SavedCandidate
+        fields = ["id", "user", "candidate", "created_at"]
+        read_only_fields = ["user", "created_at"]

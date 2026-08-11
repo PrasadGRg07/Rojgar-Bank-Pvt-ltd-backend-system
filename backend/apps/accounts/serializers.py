@@ -30,13 +30,14 @@ class UserSerializer(serializers.ModelSerializer):
     contact_person = serializers.SerializerMethodField()
     mobile = serializers.SerializerMethodField()
     intro = serializers.SerializerMethodField()
+    profile_picture = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             "id", "username", "name", "email", "first_name", "last_name", "role", "employee_id", "company_name",
             "address", "office_phone", "official_email", "linkedin_id", "industry", "company_size", "website",
-            "facebook", "contact_person", "mobile", "intro"
+            "facebook", "contact_person", "mobile", "intro", "profile_picture"
         )
 
     def get_name(self, obj):
@@ -92,6 +93,22 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_intro(self, obj):
         return self._get_profile_field(obj, "intro")
+
+    def get_profile_picture(self, obj):
+        request = self.context.get("request")
+        profile = None
+
+        if obj.role == User.Role.EMPLOYEE:
+            profile = getattr(obj, "employee_profile", None)
+        elif obj.role == User.Role.JOBSEEKER:
+            profile = getattr(obj, "jobseeker_profile", None)
+
+        if profile and getattr(profile, "profile_picture", None):
+            url = profile.profile_picture.url
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        return None
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -219,7 +236,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }
-        data["user"] = UserSerializer(user).data
+        data["user"] = UserSerializer(user, context=self.context).data
         return data
 
 
