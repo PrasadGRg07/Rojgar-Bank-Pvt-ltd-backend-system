@@ -8,12 +8,19 @@ from .serializers import CustomTokenObtainPairSerializer, RegisterSerializer, Us
 
 from django.contrib.auth import get_user_model
 
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 User = get_user_model()
+
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(APIView):
+
     parser_classes = [parsers.JSONParser, parsers.FormParser, parsers.MultiPartParser]
 
     def post(self, request):

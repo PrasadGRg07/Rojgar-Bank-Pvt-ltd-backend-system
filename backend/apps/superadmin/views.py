@@ -8,10 +8,16 @@ from django.shortcuts import get_object_or_404
 from apps.employee.models import Subscription
 
 
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+
+@method_decorator(csrf_exempt, name='dispatch')
 class SuperAdminLoginView(APIView):
 
     authentication_classes = []
     permission_classes = []
+
 
     def post(self, request):
         username = request.data.get("username")
