@@ -221,12 +221,19 @@ if CLOUDINARY_URL:
     import cloudinary
     import cloudinary.uploader
     import cloudinary.api
+    import urllib.parse
+    url = urllib.parse.urlparse(CLOUDINARY_URL)
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': url.hostname,
+        'API_KEY': url.username,
+        'API_SECRET': url.password,
+    }
     STORAGES = {
         "default": {
             "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
     MEDIA_URL = '/media/'  # Not really used but required by Django
