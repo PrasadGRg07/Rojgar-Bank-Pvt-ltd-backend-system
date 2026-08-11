@@ -42,3 +42,7 @@ typing_extensions==4.16.0
 urllib3==2.7.0
 gunicorn==22.0.0
 whitenoise==6.8.2
+psycopg2-binary==2.9.10
+cloudinary==1.42.1
+django-cloudinary-storage==0.3.0
+
