@@ -221,7 +221,14 @@ if CLOUDINARY_URL:
     import cloudinary
     import cloudinary.uploader
     import cloudinary.api
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
     MEDIA_URL = '/media/'  # Not really used but required by Django
 else:
     # Local fallback
