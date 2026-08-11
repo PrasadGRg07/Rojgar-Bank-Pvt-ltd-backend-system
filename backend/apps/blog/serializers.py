@@ -4,8 +4,8 @@ from .models import BlogArticle
 
 class BlogArticleSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
-
     is_published = serializers.BooleanField(default=True, required=False)
+    cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = BlogArticle
@@ -26,3 +26,15 @@ class BlogArticleSerializer(serializers.ModelSerializer):
         if not obj.author:
             return None
         return obj.author.get_full_name() or obj.author.username
+
+    def get_cover_image(self, obj):
+        if not obj.cover_image:
+            return None
+        url = obj.cover_image.url
+        # Cloudinary returns absolute URLs; local dev returns relative paths
+        if url.startswith('http'):
+            return url
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(url)
+        return url
