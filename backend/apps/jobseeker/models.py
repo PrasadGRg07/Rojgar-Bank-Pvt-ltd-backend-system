@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from backend.storage import get_raw_storage
 from apps.accounts.models import CustomUser
 from apps.employee.models import Job
 
@@ -23,6 +24,7 @@ class JobSeekerProfile(models.Model):
         upload_to="resumes/",
         blank=True,
         null=True,
+        storage=get_raw_storage,
     )
 
     bio = models.TextField(blank=True)
@@ -230,18 +232,21 @@ class JobApplication(models.Model):
         upload_to="resumes/",
         blank=True,
         null=True,
+        storage=get_raw_storage,
     )
 
     certificates = models.FileField(
         upload_to="job_applications/certificates/",
         blank=True,
         null=True,
+        storage=get_raw_storage,
     )
 
     citizenship_copy = models.FileField(
         upload_to="job_applications/citizenship/",
         blank=True,
         null=True,
+        storage=get_raw_storage,
     )
 
     status = models.CharField(
