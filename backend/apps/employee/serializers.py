@@ -20,7 +20,7 @@ class ExperienceSerializer(serializers.ModelSerializer):
 class CertificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Certification
-        fields = ["id", "name", "issuing_organization", "issue_date", "expiration_date", "credential_id", "credential_url"]
+        fields = ["id", "title", "organization", "issue_date", "expiry_date", "credential_id", "credential_url"]
 
 class PortfolioSerializer(serializers.ModelSerializer):
     class Meta:
