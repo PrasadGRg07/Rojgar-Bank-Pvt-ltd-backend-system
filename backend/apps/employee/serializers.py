@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Job, SavedCandidate
-from apps.jobseeker.models import JobApplication, JobSeekerProfile, Skill, Education, Experience
+from apps.jobseeker.models import JobApplication, JobSeekerProfile, Skill, Education, Experience, Certification, Portfolio
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,6 +17,17 @@ class ExperienceSerializer(serializers.ModelSerializer):
         model = Experience
         fields = ["id", "company", "position", "employment_type", "start_date", "end_date", "currently_working", "description"]
 
+class CertificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Certification
+        fields = ["id", "name", "issuing_organization", "issue_date", "expiration_date", "credential_id", "credential_url"]
+
+class PortfolioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Portfolio
+        fields = ["id", "title", "project_type", "description", "project_url", "github_url", "image"]
+
+
 class CandidateProfileSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     email = serializers.CharField(source="user.email", read_only=True)
@@ -24,13 +35,15 @@ class CandidateProfileSerializer(serializers.ModelSerializer):
     skills = SkillSerializer(many=True, read_only=True)
     educations = EducationSerializer(many=True, read_only=True)
     experiences = ExperienceSerializer(many=True, read_only=True)
+    certifications = CertificationSerializer(many=True, read_only=True)
+    portfolios = PortfolioSerializer(many=True, read_only=True)
     
     class Meta:
         model = JobSeekerProfile
         fields = [
             "id", "user_id", "name", "email", "phone", "address", 
             "profile_picture", "bio", "portfolio", "linkedin", "github",
-            "skills", "educations", "experiences"
+            "skills", "educations", "experiences", "certifications", "portfolios", "resume"
         ]
         
     def get_name(self, obj):
