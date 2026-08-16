@@ -45,6 +45,9 @@ class EmployeeDashboardView(APIView):
         })
 
 
+from django.contrib.auth import get_user_model
+from apps.messaging.models import Notification
+
 class JobListCreateView(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = JobSerializer
@@ -53,9 +56,22 @@ class JobListCreateView(ListCreateAPIView):
         return Job.objects.filter(user=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
-            serializer.save(
-                user=self.request.user,
-                status="draft"
+        job = serializer.save(
+            user=self.request.user,
+            status="draft"
+        )
+        
+        # Optionally send a notification if they submitted immediately, but usually it's draft.
+        # If we want admin to get notified on draft creation:
+        User = get_user_model()
+        admins = User.objects.filter(role__in=['admin', 'superadmin'])
+        for admin in admins:
+            Notification.objects.create(
+                recipient=admin,
+                title=f"New Job Posted: {job.title}",
+                message=f"{self.request.user.username} has posted a new job: {job.title}.",
+                notification_type="job_created",
+                related_job=job
             )
 
 class SubmitJobForReviewView(APIView):

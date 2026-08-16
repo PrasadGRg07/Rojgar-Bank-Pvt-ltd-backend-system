@@ -15,6 +15,7 @@ from apps.employee.models import Job, EmployeeProfile, Subscription
 from apps.employee.serializers import JobSerializer
 from apps.jobseeker.models import JobApplication
 from rest_framework import serializers as drf_serializers
+from apps.messaging.models import Notification
 
 User = get_user_model()
 
@@ -145,6 +146,14 @@ class ApproveJobView(APIView):
         job.rejection_reason = ""
         job.save()
 
+        Notification.objects.create(
+            recipient=job.user,
+            title=f"Job Approved: {job.title}",
+            message=f"Your job '{job.title}' has been approved by the admin.",
+            notification_type="job_approved",
+            related_job=job
+        )
+
         return Response(
             {"message": "Job approved successfully."},
             status=status.HTTP_200_OK,
@@ -167,6 +176,14 @@ class RejectJobView(APIView):
         job.reviewed_at = timezone.now()
         job.rejection_reason = reason
         job.save()
+
+        Notification.objects.create(
+            recipient=job.user,
+            title=f"Job Rejected: {job.title}",
+            message=f"Your job '{job.title}' was rejected. Reason: {reason}",
+            notification_type="job_rejected",
+            related_job=job
+        )
 
         return Response(
             {"message": "Job rejected successfully."},

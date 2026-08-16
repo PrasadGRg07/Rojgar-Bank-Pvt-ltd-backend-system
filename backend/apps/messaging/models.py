@@ -26,3 +26,24 @@ class Message(models.Model):
 
     def __str__(self):
         return f"From {self.sender.username} at {self.created_at}"
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('job_created', 'Job Created'),
+        ('job_approved', 'Job Approved'),
+        ('job_rejected', 'Job Rejected'),
+        ('system', 'System Notification'),
+    )
+    recipient = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES, default='system')
+    is_read = models.BooleanField(default=False)
+    related_job = models.ForeignKey('employee.Job', on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"To {self.recipient.username} - {self.title}"

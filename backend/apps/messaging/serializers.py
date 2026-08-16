@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Conversation, Message
+from .models import Conversation, Message, Notification
 from apps.accounts.models import CustomUser
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -74,3 +74,9 @@ class ConversationListSerializer(serializers.ModelSerializer):
         if not user:
             return 0
         return obj.messages.exclude(sender=user).filter(is_read=False).count()
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'title', 'message', 'notification_type', 'is_read', 'related_job', 'created_at']
+

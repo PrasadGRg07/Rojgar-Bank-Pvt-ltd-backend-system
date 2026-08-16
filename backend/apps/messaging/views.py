@@ -3,9 +3,28 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from .models import Conversation, Message
-from .serializers import ConversationListSerializer, MessageSerializer
+from .models import Conversation, Message, Notification
+from .serializers import ConversationListSerializer, MessageSerializer, NotificationSerializer
 from apps.accounts.models import CustomUser
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(recipient=self.request.user)
+
+class NotificationUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
+        notification.is_read = True
+        notification.save()
+        return Response({"status": "success", "message": "Notification marked as read"})
+
+    def put(self, request, pk):
+        return self.patch(request, pk)
 
 class ConversationListView(generics.ListAPIView):
     serializer_class = ConversationListSerializer
