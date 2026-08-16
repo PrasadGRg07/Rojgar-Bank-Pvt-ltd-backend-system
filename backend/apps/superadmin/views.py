@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -164,4 +164,40 @@ class SuperAdminUpdateSubscriptionView(APIView):
             'message': 'Subscription updated.',
             'status': sub.status,
             'expires_at': sub.expires_at.strftime('%Y-%m-%d') if sub.expires_at else None,
+        })
+
+class SuperAdminUserListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != "superadmin":
+            return Response({"detail": "Forbidden"}, status=403)
+        User = get_user_model()
+        users = User.objects.all().order_by("-date_joined")
+        data = []
+        for user in users:
+            data.append({
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role,
+                "date_joined": user.date_joined.strftime("%Y-%m-%d"),
+            })
+        return Response(data)
+
+class SuperAdminPromoteUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if request.user.role != "superadmin":
+            return Response({"detail": "Forbidden"}, status=403)
+        User = get_user_model()
+        user = get_object_or_404(User, pk=pk)
+        
+        user.role = "superadmin"
+        user.save()
+        
+        return Response({
+            "message": f"User {user.username} has been granted unlimited access (superadmin).",
+            "role": user.role
         })
