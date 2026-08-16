@@ -181,11 +181,13 @@ class SuperAdminUserListView(APIView):
                 "username": user.username,
                 "email": user.email,
                 "role": user.role,
+                "is_special_account": user.is_special_account,
                 "date_joined": user.date_joined.strftime("%Y-%m-%d"),
             })
         return Response(data)
 
-class SuperAdminPromoteUserView(APIView):
+class SuperAdminGrantSpecialAccountView(APIView):
+    """Grants special account status WITHOUT changing the user's original role."""
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
@@ -193,13 +195,36 @@ class SuperAdminPromoteUserView(APIView):
             return Response({"detail": "Forbidden"}, status=403)
         User = get_user_model()
         user = get_object_or_404(User, pk=pk)
-        
-        user.role = "superadmin"
+
+        user.is_special_account = True
         user.save()
-        
+
         return Response({
-            "message": f"User {user.username} has been granted unlimited access (superadmin).",
-            "role": user.role
+            "message": f"{user.username} has been granted Special Account access.",
+            "username": user.username,
+            "role": user.role,
+            "is_special_account": user.is_special_account,
+        })
+
+
+class SuperAdminRevokeSpecialAccountView(APIView):
+    """Revokes special account status, restoring normal permissions."""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        if request.user.role != "superadmin":
+            return Response({"detail": "Forbidden"}, status=403)
+        User = get_user_model()
+        user = get_object_or_404(User, pk=pk)
+
+        user.is_special_account = False
+        user.save()
+
+        return Response({
+            "message": f"Special Account access has been revoked for {user.username}.",
+            "username": user.username,
+            "role": user.role,
+            "is_special_account": user.is_special_account,
         })
 
 class SuperAdminRoleStatsView(APIView):
