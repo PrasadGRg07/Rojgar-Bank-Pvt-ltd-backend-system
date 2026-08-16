@@ -6,7 +6,8 @@ from .views import (
     SuperAdminRejectSubscriptionView,
     SuperAdminUpdateSubscriptionView,
     SuperAdminUserListView,
-    SuperAdminPromoteUserView
+    SuperAdminPromoteUserView,
+    SuperAdminRoleStatsView
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path("subscriptions/<int:pk>/update/", SuperAdminUpdateSubscriptionView.as_view(), name="superadmin-update-subscription"),
     path("users/", SuperAdminUserListView.as_view(), name="superadmin-user-list"),
     path("users/<int:pk>/grant-unlimited/", SuperAdminPromoteUserView.as_view(), name="superadmin-promote-user"),
+    path("roles/stats/", SuperAdminRoleStatsView.as_view(), name="superadmin-role-stats"),
 ]

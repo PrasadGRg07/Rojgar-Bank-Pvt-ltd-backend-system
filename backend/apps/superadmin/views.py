@@ -201,3 +201,51 @@ class SuperAdminPromoteUserView(APIView):
             "message": f"User {user.username} has been granted unlimited access (superadmin).",
             "role": user.role
         })
+
+class SuperAdminRoleStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != "superadmin":
+            return Response({"detail": "Forbidden"}, status=403)
+        
+        from django.db.models import Count
+        User = get_user_model()
+        role_counts = User.objects.values('role').annotate(count=Count('role'))
+        
+        # Convert to dictionary mapping
+        counts_dict = {item['role']: item['count'] for item in role_counts}
+        
+        # Hardcode descriptions since there is no DB model for roles
+        stats = [
+            {
+                "id": 1,
+                "role": "Super Admin",
+                "role_key": "superadmin",
+                "users": counts_dict.get("superadmin", 0),
+                "description": "Full access to the entire system",
+            },
+            {
+                "id": 2,
+                "role": "Admin",
+                "role_key": "admin",
+                "users": counts_dict.get("admin", 0),
+                "description": "Manage employees, jobs and reports",
+            },
+            {
+                "id": 3,
+                "role": "Employee",
+                "role_key": "employee",
+                "users": counts_dict.get("employee", 0),
+                "description": "Manage company jobs",
+            },
+            {
+                "id": 4,
+                "role": "Job Seeker",
+                "role_key": "jobseeker",
+                "users": counts_dict.get("jobseeker", 0),
+                "description": "Apply for jobs",
+            }
+        ]
+        
+        return Response(stats)
