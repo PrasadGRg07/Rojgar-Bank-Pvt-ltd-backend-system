@@ -224,6 +224,22 @@ class SubscriptionCreateView(APIView):
 
     def get(self, request):
         from django.utils import timezone
+        
+        # Special accounts have unlimited access — treat as permanently subscribed
+        if getattr(request.user, 'is_special_account', False):
+            return Response([{
+                'id': 0,
+                'plan': 'special',
+                'amount': '0.00',
+                'status': 'active',
+                'status_display': 'Active (Special Account)',
+                'rejection_reason': None,
+                'activated_at': request.user.date_joined.strftime('%Y-%m-%d'),
+                'expires_at': None,
+                'days_remaining': None,
+                'created_at': request.user.date_joined.strftime('%Y-%m-%d'),
+            }])
+        
         subs = Subscription.objects.filter(user=request.user)
         data = []
         for s in subs:

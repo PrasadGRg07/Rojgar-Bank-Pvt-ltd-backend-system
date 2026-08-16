@@ -37,7 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "id", "username", "name", "email", "first_name", "last_name", "role", "employee_id", "company_name",
             "address", "office_phone", "official_email", "linkedin_id", "industry", "company_size", "website",
-            "facebook", "contact_person", "mobile", "intro", "profile_picture"
+            "facebook", "contact_person", "mobile", "intro", "profile_picture", "is_special_account"
         )
 
     def get_name(self, obj):
