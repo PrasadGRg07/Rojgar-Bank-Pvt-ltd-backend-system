@@ -146,50 +146,31 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        from .models import PendingUser
+        from django.contrib.auth.hashers import make_password
+        
         validated_data.pop("confirm_password", None)
-        company_name = validated_data.pop("company_name", None)
-        phone_number = validated_data.pop("phone_number", None)
         password = validated_data.pop("password")
+        
+        # Hash password before storing in JSON
+        validated_data["password"] = make_password(password)
 
         username = normalize_username(validated_data.get("username") or "")
         if not username:
             username = normalize_username(validated_data.get("email") or "")
         validated_data["username"] = username
 
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
+        email = validated_data.get("email")
 
-        profile_defaults = {}
+        # Create or update PendingUser
+        pending_user, created = PendingUser.objects.update_or_create(
+            email=email,
+            defaults={
+                "registration_data": validated_data
+            }
+        )
 
-        if company_name:
-            profile_defaults["company_name"] = company_name
-
-        if phone_number:
-            profile_defaults["phone_number"] = phone_number
-
-        if user.role == User.Role.EMPLOYEE:
-            try:
-                from apps.employee.models import EmployeeProfile
-
-                EmployeeProfile.objects.update_or_create(
-                    user=user,
-                    defaults=profile_defaults,
-                )
-            except Exception:
-                if company_name:
-                    user.company = company_name
-                    user.save()
-
-        elif user.role == User.Role.JOBSEEKER:
-            try:
-                from apps.jobseeker.models import JobSeekerProfile
-
-                JobSeekerProfile.objects.get_or_create(user=user)
-            except Exception as e:
-                print(e)
-
-        return user
+        return pending_user
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

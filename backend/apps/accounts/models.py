@@ -31,3 +31,15 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.role})"
+
+
+class PendingUser(models.Model):
+    email = models.EmailField(unique=True)
+    registration_data = models.JSONField()
+    otp_hash = models.CharField(max_length=255, blank=True, null=True)
+    otp_expires_at = models.DateTimeField(blank=True, null=True)
+    otp_attempts = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Pending: {self.email}"

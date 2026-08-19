@@ -63,21 +63,25 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
+            # Check if email is already in CustomUser
+            email = serializer.validated_data.get('email')
+            if User.objects.filter(email=email).exists():
+                return Response({"email": ["A user with this email already exists."]}, status=status.HTTP_400_BAD_REQUEST)
+
+            pending_user = serializer.save()
 
             # Generate and store OTP
             otp = generate_otp()
-            user.is_verified = False
-            user.otp_hash = make_password(otp)
-            user.otp_expires_at = timezone.now() + timezone.timedelta(minutes=10)
-            user.otp_attempts = 0
-            user.save()
+            pending_user.otp_hash = make_password(otp)
+            pending_user.otp_expires_at = timezone.now() + timezone.timedelta(minutes=10)
+            pending_user.otp_attempts = 0
+            pending_user.save()
 
-            send_otp_email(user.email, otp, user.first_name)
+            send_otp_email(pending_user.email, otp, pending_user.registration_data.get('first_name'))
 
             return Response({
                 "message": "Registered successfully. Please check your email for the OTP verification code.",
-                "email": user.email,
+                "email": pending_user.email,
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -224,48 +228,82 @@ class VerifyOTPView(APIView):
         if not email or not otp:
             return Response({"detail": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.filter(email=email).first()
-        if not user:
-            return Response({"detail": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if user.is_verified:
+        # Ensure account isn't already created
+        if User.objects.filter(email=email).exists():
             return Response({"detail": "Account is already verified."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Lookup PendingUser
+        from apps.accounts.models import PendingUser
+        pending_user = PendingUser.objects.filter(email=email).first()
+        
+        if not pending_user:
+            return Response({"detail": "No pending registration found for this email."}, status=status.HTTP_400_BAD_REQUEST)
+
         # Check attempts
-        if user.otp_attempts >= 3:
+        if pending_user.otp_attempts >= 3:
             # Invalidate OTP after 3 failed attempts
-            user.otp_hash = None
-            user.otp_expires_at = None
-            user.otp_attempts = 0
-            user.save()
+            pending_user.otp_hash = None
+            pending_user.otp_expires_at = None
+            pending_user.otp_attempts = 0
+            pending_user.save()
             return Response({
                 "detail": "Too many failed attempts. Please request a new OTP.",
                 "code": "otp_max_attempts"
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Check expiry
-        if not user.otp_expires_at or user.otp_expires_at < timezone.now():
+        if not pending_user.otp_expires_at or pending_user.otp_expires_at < timezone.now():
             return Response({
                 "detail": "OTP has expired. Please request a new one.",
                 "code": "otp_expired"
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Verify OTP
-        if not user.otp_hash or not check_password(otp, user.otp_hash):
-            user.otp_attempts += 1
-            user.save()
-            remaining = 3 - user.otp_attempts
+        if not pending_user.otp_hash or not check_password(otp, pending_user.otp_hash):
+            pending_user.otp_attempts += 1
+            pending_user.save()
+            remaining = 3 - pending_user.otp_attempts
             return Response({
                 "detail": f"Invalid OTP. {remaining} attempt(s) remaining.",
                 "code": "otp_invalid"
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Success — activate account
-        user.is_verified = True
-        user.otp_hash = None
-        user.otp_expires_at = None
-        user.otp_attempts = 0
-        user.save()
+        data = pending_user.registration_data
+        
+        user = User.objects.create(
+            username=data.get('username'),
+            email=data.get('email'),
+            first_name=data.get('first_name', ''),
+            last_name=data.get('last_name', ''),
+            role=data.get('role', User.Role.JOBSEEKER),
+            password=data.get('password'),
+            is_verified=True
+        )
+        
+        company_name = data.get('company_name')
+        phone_number = data.get('phone_number')
+
+        if user.role == User.Role.EMPLOYEE:
+            try:
+                from apps.employee.models import EmployeeProfile
+                EmployeeProfile.objects.create(
+                    user=user,
+                    company_name=company_name or '',
+                    phone_number=phone_number or ''
+                )
+            except Exception:
+                if company_name:
+                    user.company = company_name
+                    user.save()
+        elif user.role == User.Role.JOBSEEKER:
+            try:
+                from apps.jobseeker.models import JobSeekerProfile
+                JobSeekerProfile.objects.create(user=user)
+            except Exception:
+                pass
+
+        pending_user.delete()
 
         return Response({"detail": "Email verified successfully. You can now log in."}, status=status.HTTP_200_OK)
 
@@ -278,21 +316,24 @@ class ResendOTPView(APIView):
         if not email:
             return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.filter(email=email).first()
-        if not user:
-            return Response({"detail": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if user.is_verified:
+        if User.objects.filter(email=email).exists():
             return Response({"detail": "Account is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.accounts.models import PendingUser
+        pending_user = PendingUser.objects.filter(email=email).first()
+        
+        if not pending_user:
+            return Response({"detail": "No pending registration found for this email."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Generate new OTP
         otp = generate_otp()
-        user.otp_hash = make_password(otp)
-        user.otp_expires_at = timezone.now() + timezone.timedelta(minutes=10)
-        user.otp_attempts = 0
-        user.save()
+        pending_user.otp_hash = make_password(otp)
+        pending_user.otp_expires_at = timezone.now() + timezone.timedelta(minutes=10)
+        pending_user.otp_attempts = 0
+        pending_user.save()
 
-        send_otp_email(user.email, otp, user.first_name)
+        first_name = pending_user.registration_data.get('first_name', '')
+        send_otp_email(pending_user.email, otp, first_name)
 
         return Response({"detail": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
