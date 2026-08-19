@@ -7,7 +7,10 @@ from .views import (
     UpdateProfileView,
     UpdateEmailView,
     SendOTPView,
-    MeView
+    MeView,
+    VerifyOTPView,
+    ResendOTPView,
+    GoogleLoginView,
 )
 
 urlpatterns = [
@@ -20,4 +23,7 @@ urlpatterns = [
     path("update-email/", UpdateEmailView.as_view(), name="update_email"),
     path("send-otp/", SendOTPView.as_view(), name="send_otp"),
     path("me/", MeView.as_view(), name="me"),
+    path("verify-otp/", VerifyOTPView.as_view(), name="verify_otp"),
+    path("resend-otp/", ResendOTPView.as_view(), name="resend_otp"),
+    path("google-login/", GoogleLoginView.as_view(), name="google_login"),
 ]

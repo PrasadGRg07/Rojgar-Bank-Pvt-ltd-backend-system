@@ -7,11 +7,48 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer, ChangePasswordSerializer
 
 from django.contrib.auth import get_user_model
-
+from django.contrib.auth.hashers import make_password, check_password
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+import random
+import requests
 
 User = get_user_model()
+
+
+def generate_otp():
+    """Generate a 6-digit OTP."""
+    return str(random.randint(100000, 999999))
+
+
+def send_otp_email(email, otp, first_name=""):
+    """Send OTP verification email."""
+    subject = "Verify your Rojgar Bank account"
+    message = f"""Hello {first_name or "there"},
+
+Welcome to Rojgar Bank!
+
+Your email verification code is:
+
+    {otp}
+
+This code will expire in 10 minutes. Do not share this code with anyone.
+
+If you did not create an account, please ignore this email.
+
+— The Rojgar Bank Team
+"""
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [email],
+        fail_silently=False,
+    )
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -27,25 +64,20 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            profile = getattr(user, 'employee_profile', None)
 
-            refresh = RefreshToken.for_user(user)
-            refresh['role'] = user.role
-            refresh['name'] = user.get_full_name() or user.username
-            refresh['company_name'] = profile.company_name if profile else getattr(user, 'company', None)
+            # Generate and store OTP
+            otp = generate_otp()
+            user.is_verified = False
+            user.otp_hash = make_password(otp)
+            user.otp_expires_at = timezone.now() + timezone.timedelta(minutes=10)
+            user.otp_attempts = 0
+            user.save()
+
+            send_otp_email(user.email, otp, user.first_name)
 
             return Response({
-                "message": "Registered successfully",
-                "user": {
-                    "id": user.id,
-                     "first_name": user.first_name,
-                     "last_name": user.last_name,
-                    "email": user.email,
-                    "role": user.role,
-                    "company_name": profile.company_name if profile else getattr(user, 'company', None),
-                },
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
+                "message": "Registered successfully. Please check your email for the OTP verification code.",
+                "email": user.email,
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -180,9 +212,162 @@ class SendOTPView(APIView):
         profile.save()
 
         return Response({"detail": "OTP sent successfully."}, status=status.HTTP_200_OK)
-    
-class MeView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        return Response(UserSerializer(request.user).data)
+
+class VerifyOTPView(APIView):
+    """Verify a 6-digit OTP to activate the user's account."""
+
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+
+        if not email or not otp:
+            return Response({"detail": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"detail": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.is_verified:
+            return Response({"detail": "Account is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check attempts
+        if user.otp_attempts >= 3:
+            # Invalidate OTP after 3 failed attempts
+            user.otp_hash = None
+            user.otp_expires_at = None
+            user.otp_attempts = 0
+            user.save()
+            return Response({
+                "detail": "Too many failed attempts. Please request a new OTP.",
+                "code": "otp_max_attempts"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check expiry
+        if not user.otp_expires_at or user.otp_expires_at < timezone.now():
+            return Response({
+                "detail": "OTP has expired. Please request a new one.",
+                "code": "otp_expired"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify OTP
+        if not user.otp_hash or not check_password(otp, user.otp_hash):
+            user.otp_attempts += 1
+            user.save()
+            remaining = 3 - user.otp_attempts
+            return Response({
+                "detail": f"Invalid OTP. {remaining} attempt(s) remaining.",
+                "code": "otp_invalid"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Success — activate account
+        user.is_verified = True
+        user.otp_hash = None
+        user.otp_expires_at = None
+        user.otp_attempts = 0
+        user.save()
+
+        return Response({"detail": "Email verified successfully. You can now log in."}, status=status.HTTP_200_OK)
+
+
+class ResendOTPView(APIView):
+    """Resend OTP to the user's email."""
+
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"detail": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.is_verified:
+            return Response({"detail": "Account is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate new OTP
+        otp = generate_otp()
+        user.otp_hash = make_password(otp)
+        user.otp_expires_at = timezone.now() + timezone.timedelta(minutes=10)
+        user.otp_attempts = 0
+        user.save()
+
+        send_otp_email(user.email, otp, user.first_name)
+
+        return Response({"detail": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
+
+
+class GoogleLoginView(APIView):
+    def post(self, request):
+        from .serializers import GoogleLoginSerializer
+        serializer = GoogleLoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        credential = serializer.validated_data["credential"]
+
+        # Verify token with Google
+        google_response = requests.get(f'https://oauth2.googleapis.com/tokeninfo?id_token={credential}')
+        if google_response.status_code != 200:
+            return Response({"detail": "Invalid Google token."}, status=status.HTTP_400_BAD_REQUEST)
+
+        google_data = google_response.json()
+        email = google_data.get("email")
+        google_id = google_data.get("sub")
+        first_name = google_data.get("given_name", "")
+        last_name = google_data.get("family_name", "")
+
+        if not email:
+            return Response({"detail": "Email not provided by Google."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+
+        if user:
+            # User exists — link Google account if not already linked
+            if not user.google_id:
+                user.google_id = google_id
+                user.auth_provider = 'google'
+                user.is_verified = True
+                user.save()
+        else:
+            # Create new user
+            username = email.split('@')[0]
+            base_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+
+            user = User.objects.create(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                google_id=google_id,
+                auth_provider='google',
+                is_verified=True,
+                role=User.Role.JOBSEEKER,
+            )
+            try:
+                from apps.jobseeker.models import JobSeekerProfile
+                JobSeekerProfile.objects.get_or_create(user=user)
+            except Exception:
+                pass
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        refresh['role'] = user.role
+        refresh['name'] = user.get_full_name() or user.username
+
+        return Response({
+            "message": "Login successful",
+            "user": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "role": user.role,
+            },
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }, status=status.HTTP_200_OK)

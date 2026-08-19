@@ -16,6 +16,17 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.EMPLOYEE)
     employee_id = models.CharField(max_length=20, blank=True, null=True)
     company = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Verification via OTP
+    is_verified = models.BooleanField(default=False)
+    otp_hash = models.CharField(max_length=255, blank=True, null=True)
+    otp_expires_at = models.DateTimeField(blank=True, null=True)
+    otp_attempts = models.IntegerField(default=0)
+
+    # Google OAuth
+    google_id = models.CharField(max_length=255, blank=True, null=True)
+    auth_provider = models.CharField(max_length=20, default='email')
+
     is_special_account = models.BooleanField(default=False, help_text="Grants unlimited access without changing the user's original role.")
 
     def __str__(self):

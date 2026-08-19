@@ -230,6 +230,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if not user.is_active:
             raise AuthenticationFailed("User account is disabled")
 
+        if not user.is_verified and user.auth_provider == 'email':
+            raise AuthenticationFailed("Please verify your email before logging in.", code="email_unverified")
+
         self.user = user
         refresh = self.get_token(user)
         data = {
@@ -259,3 +262,6 @@ class ChangePasswordSerializer(serializers.Serializer):
             })
 
         return attrs
+
+class GoogleLoginSerializer(serializers.Serializer):
+    credential = serializers.CharField(required=True)
