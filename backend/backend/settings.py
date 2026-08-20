@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "cloudinary_storage",
     "cloudinary",
+    "anymail",
 
     "apps.accounts",
     "apps.employee",
@@ -247,13 +248,20 @@ else:
     MEDIA_ROOT = BASE_DIR / 'media'
 
 # Email Configuration
-# For local development: OTP codes print to the Django terminal
-# For production: set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD in a .env file
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@rojgarbank.com')
+# - Local dev: OTP codes print to the Django terminal (no env vars needed)
+# - Production on Render: uses Brevo HTTP API (bypasses blocked SMTP ports)
+#   Set BREVO_API_KEY in Render Environment Variables.
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+
+if BREVO_API_KEY:
+    # Production: Brevo HTTP API (works on Render free tier)
+    EMAIL_BACKEND = 'anymail.backends.sendinblue.EmailBackend'
+    ANYMAIL = {
+        'SENDINBLUE_API_KEY': BREVO_API_KEY,
+    }
+else:
+    # Local development: print emails to the terminal
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'rojgarbank2026@gmail.com')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
