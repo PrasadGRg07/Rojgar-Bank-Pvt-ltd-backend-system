@@ -396,6 +396,13 @@ class GoogleLoginView(APIView):
                     user.auth_provider = 'google'
                     user.is_verified = True
                     user.save()
+
+                # Check if the user's existing role matches the requested role
+                if user.role != requested_role and not user.is_special_account:
+                    return Response(
+                        {"detail": f"This email is already registered as an {user.role.capitalize()}. Please login from the {user.role.capitalize()} portal."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             else:
                 # Create new user
                 username = email.split('@')[0]
