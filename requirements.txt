@@ -45,5 +45,5 @@ whitenoise==6.8.2
 psycopg2-binary==2.9.10
 cloudinary==1.42.1
 django-cloudinary-storage==0.3.0
-django-anymail[sendinblue]
+django-anymail[brevo]
 

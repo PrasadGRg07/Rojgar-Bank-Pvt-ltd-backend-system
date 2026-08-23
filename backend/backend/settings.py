@@ -255,9 +255,9 @@ BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
 
 if BREVO_API_KEY:
     # Production: Brevo HTTP API (works on Render free tier)
-    EMAIL_BACKEND = 'anymail.backends.sendinblue.EmailBackend'
+    EMAIL_BACKEND = 'anymail.backends.brevo.EmailBackend'
     ANYMAIL = {
-        'SENDINBLUE_API_KEY': BREVO_API_KEY,
+        'BREVO_API_KEY': BREVO_API_KEY,
     }
 else:
     # Local development: print emails to the terminal
