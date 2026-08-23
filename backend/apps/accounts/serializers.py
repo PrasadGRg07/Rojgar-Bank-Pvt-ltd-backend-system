@@ -246,3 +246,4 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class GoogleLoginSerializer(serializers.Serializer):
     credential = serializers.CharField(required=True)
+    role = serializers.CharField(required=False, default="jobseeker")

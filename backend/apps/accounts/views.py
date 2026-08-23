@@ -347,6 +347,8 @@ class GoogleLoginView(APIView):
 
         credential = serializer.validated_data["credential"]
 
+        requested_role = serializer.validated_data.get("role", User.Role.JOBSEEKER)
+
         # Verify token with Google
         google_response = requests.get(f'https://oauth2.googleapis.com/tokeninfo?id_token={credential}')
         if google_response.status_code != 200:
@@ -379,6 +381,10 @@ class GoogleLoginView(APIView):
                 username = f"{base_username}{counter}"
                 counter += 1
 
+            # Validate role
+            if requested_role not in [User.Role.EMPLOYEE, User.Role.JOBSEEKER]:
+                requested_role = User.Role.JOBSEEKER
+
             user = User.objects.create(
                 username=username,
                 email=email,
@@ -387,11 +393,15 @@ class GoogleLoginView(APIView):
                 google_id=google_id,
                 auth_provider='google',
                 is_verified=True,
-                role=User.Role.JOBSEEKER,
+                role=requested_role,
             )
             try:
-                from apps.jobseeker.models import JobSeekerProfile
-                JobSeekerProfile.objects.get_or_create(user=user)
+                if requested_role == User.Role.EMPLOYEE:
+                    from apps.employee.models import EmployeeProfile
+                    EmployeeProfile.objects.get_or_create(user=user)
+                else:
+                    from apps.jobseeker.models import JobSeekerProfile
+                    JobSeekerProfile.objects.get_or_create(user=user)
             except Exception:
                 pass
 
