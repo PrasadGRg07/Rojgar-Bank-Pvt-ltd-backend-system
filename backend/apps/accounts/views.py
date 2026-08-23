@@ -77,7 +77,19 @@ class RegisterView(APIView):
             pending_user.otp_attempts = 0
             pending_user.save()
 
-            send_otp_email(pending_user.email, otp, pending_user.registration_data.get('first_name'))
+            try:
+                send_otp_email(pending_user.email, otp, pending_user.registration_data.get('first_name'))
+            except Exception as e:
+                # If email fails, delete the pending user so they can try again
+                pending_user.delete()
+                error_message = str(e)
+                if "sender not verified" in error_message.lower():
+                    error_message = "Your Brevo sender email is not verified. Please verify it in the Brevo dashboard."
+                elif "unauthorized" in error_message.lower():
+                    error_message = "Your Brevo API key is invalid or unauthorized."
+                return Response({
+                    "detail": f"Failed to send OTP email: {error_message}"
+                }, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({
                 "message": "Registered successfully. Please check your email for the OTP verification code.",
@@ -333,7 +345,18 @@ class ResendOTPView(APIView):
         pending_user.save()
 
         first_name = pending_user.registration_data.get('first_name', '')
-        send_otp_email(pending_user.email, otp, first_name)
+        
+        try:
+            send_otp_email(pending_user.email, otp, first_name)
+        except Exception as e:
+            error_message = str(e)
+            if "sender not verified" in error_message.lower():
+                error_message = "Your Brevo sender email is not verified. Please verify it in the Brevo dashboard."
+            elif "unauthorized" in error_message.lower():
+                error_message = "Your Brevo API key is invalid or unauthorized."
+            return Response({
+                "detail": f"Failed to send OTP email: {error_message}"
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"detail": "A new OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
