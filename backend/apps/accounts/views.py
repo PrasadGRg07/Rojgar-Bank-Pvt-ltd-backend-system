@@ -363,85 +363,88 @@ class ResendOTPView(APIView):
 
 class GoogleLoginView(APIView):
     def post(self, request):
-        from .serializers import GoogleLoginSerializer
-        serializer = GoogleLoginSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            from .serializers import GoogleLoginSerializer
+            serializer = GoogleLoginSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        credential = serializer.validated_data["credential"]
+            credential = serializer.validated_data["credential"]
 
-        requested_role = serializer.validated_data.get("role", User.Role.JOBSEEKER)
+            requested_role = serializer.validated_data.get("role", User.Role.JOBSEEKER)
 
-        # Verify token with Google
-        google_response = requests.get(f'https://oauth2.googleapis.com/tokeninfo?id_token={credential}')
-        if google_response.status_code != 200:
-            return Response({"detail": "Invalid Google token."}, status=status.HTTP_400_BAD_REQUEST)
+            # Verify token with Google
+            google_response = requests.get(f'https://oauth2.googleapis.com/tokeninfo?id_token={credential}')
+            if google_response.status_code != 200:
+                return Response({"detail": "Invalid Google token."}, status=status.HTTP_400_BAD_REQUEST)
 
-        google_data = google_response.json()
-        email = google_data.get("email")
-        google_id = google_data.get("sub")
-        first_name = google_data.get("given_name", "")
-        last_name = google_data.get("family_name", "")
+            google_data = google_response.json()
+            email = google_data.get("email")
+            google_id = google_data.get("sub")
+            first_name = google_data.get("given_name", "")
+            last_name = google_data.get("family_name", "")
 
-        if not email:
-            return Response({"detail": "Email not provided by Google."}, status=status.HTTP_400_BAD_REQUEST)
+            if not email:
+                return Response({"detail": "Email not provided by Google."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.filter(email=email).first()
+            user = User.objects.filter(email=email).first()
 
-        if user:
-            # User exists — link Google account if not already linked
-            if not user.google_id:
-                user.google_id = google_id
-                user.auth_provider = 'google'
-                user.is_verified = True
-                user.save()
-        else:
-            # Create new user
-            username = email.split('@')[0]
-            base_username = username
-            counter = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}{counter}"
-                counter += 1
+            if user:
+                # User exists — link Google account if not already linked
+                if not user.google_id:
+                    user.google_id = google_id
+                    user.auth_provider = 'google'
+                    user.is_verified = True
+                    user.save()
+            else:
+                # Create new user
+                username = email.split('@')[0]
+                base_username = username
+                counter = 1
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
 
-            # Validate role
-            if requested_role not in [User.Role.EMPLOYEE, User.Role.JOBSEEKER]:
-                requested_role = User.Role.JOBSEEKER
+                # Validate role
+                if requested_role not in [User.Role.EMPLOYEE, User.Role.JOBSEEKER]:
+                    requested_role = User.Role.JOBSEEKER
 
-            user = User.objects.create(
-                username=username,
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                google_id=google_id,
-                auth_provider='google',
-                is_verified=True,
-                role=requested_role,
-            )
-            try:
-                if requested_role == User.Role.EMPLOYEE:
-                    from apps.employee.models import EmployeeProfile
-                    EmployeeProfile.objects.get_or_create(user=user)
-                else:
-                    from apps.jobseeker.models import JobSeekerProfile
-                    JobSeekerProfile.objects.get_or_create(user=user)
-            except Exception:
-                pass
+                user = User.objects.create(
+                    username=username,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    google_id=google_id,
+                    auth_provider='google',
+                    is_verified=True,
+                    role=requested_role,
+                )
+                try:
+                    if requested_role == User.Role.EMPLOYEE:
+                        from apps.employee.models import EmployeeProfile
+                        EmployeeProfile.objects.get_or_create(user=user)
+                    else:
+                        from apps.jobseeker.models import JobSeekerProfile
+                        JobSeekerProfile.objects.get_or_create(user=user)
+                except Exception:
+                    pass
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-        refresh['role'] = user.role
-        refresh['name'] = user.get_full_name() or user.username
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            refresh['role'] = user.role
+            refresh['name'] = user.get_full_name() or user.username
 
-        return Response({
-            "message": "Login successful",
-            "user": {
-                "id": user.id,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "email": user.email,
-                "role": user.role,
-            },
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        }, status=status.HTTP_200_OK)
+            return Response({
+                "message": "Login successful",
+                "user": {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email": user.email,
+                    "role": user.role,
+                },
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": f"An error occurred during Google Login: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
