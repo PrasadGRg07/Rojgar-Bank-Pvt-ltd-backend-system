@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Job, SavedCandidate
+from .models import Job, SavedCandidate, Interview
 from apps.jobseeker.models import JobApplication, JobSeekerProfile, Skill, Education, Experience, Certification, Portfolio
 
 class SkillSerializer(serializers.ModelSerializer):
@@ -269,3 +269,15 @@ class SavedCandidateSerializer(serializers.ModelSerializer):
         model = SavedCandidate
         fields = ["id", "user", "candidate", "created_at"]
         read_only_fields = ["user", "created_at"]
+
+
+class InterviewSerializer(serializers.ModelSerializer):
+    candidate_name = serializers.CharField(source="candidate.username", read_only=True)
+    candidate_email = serializers.CharField(source="candidate.email", read_only=True)
+    job_title = serializers.CharField(source="job.title", read_only=True)
+    interviewer_name = serializers.CharField(source="interviewer.username", read_only=True)
+
+    class Meta:
+        model = Interview
+        fields = "__all__"
+        read_only_fields = ["created_at", "updated_at"]

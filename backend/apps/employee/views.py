@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView, RetrieveAPIView
+from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status, parsers
@@ -286,5 +287,33 @@ class SavedCandidateToggleView(APIView):
             # If it already existed, remove it (toggle)
             saved_candidate.delete()
             return Response({"message": "Candidate removed from saved list", "is_saved": False}, status=status.HTTP_200_OK)
-        
         return Response({"message": "Candidate saved successfully", "is_saved": True}, status=status.HTTP_201_CREATED)
+
+class InterviewListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    from .serializers import InterviewSerializer
+    serializer_class = InterviewSerializer
+
+    def get_queryset(self):
+        from .models import Interview
+        return Interview.objects.filter(job__user=self.request.user).order_by('-date', '-time')
+
+    def perform_create(self, serializer):
+        interview = serializer.save(interviewer=self.request.user)
+        # Create notification for candidate
+        from apps.messaging.models import Notification
+        Notification.objects.create(
+            recipient=interview.candidate,
+            title="Interview Scheduled",
+            message=f"An interview has been scheduled for {interview.job.title} on {interview.date} at {interview.time}.",
+            notification_type="system"
+        )
+
+class InterviewDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    from .serializers import InterviewSerializer
+    serializer_class = InterviewSerializer
+
+    def get_queryset(self):
+        from .models import Interview
+        return Interview.objects.filter(job__user=self.request.user)
