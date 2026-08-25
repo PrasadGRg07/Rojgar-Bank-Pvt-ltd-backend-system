@@ -272,5 +272,68 @@ class SuperAdminRoleStatsView(APIView):
                 "description": "Apply for jobs",
             }
         ]
-        
         return Response(stats)
+
+class SuperAdminDashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != "superadmin":
+            return Response({"detail": "Forbidden"}, status=403)
+        
+        from django.db.models import Count
+        from apps.employee.models import Job
+        User = get_user_model()
+        
+        role_counts = User.objects.values('role').annotate(count=Count('role'))
+        counts_dict = {item['role']: item['count'] for item in role_counts}
+        
+        total_admins = counts_dict.get("admin", 0) + counts_dict.get("superadmin", 0)
+        total_companies = counts_dict.get("employee", 0)
+        total_jobseekers = counts_dict.get("jobseeker", 0)
+        total_jobs_posted = Job.objects.count()
+        
+        return Response({
+            "totalAdmins": total_admins,
+            "companies": total_companies,
+            "jobSeekers": total_jobseekers,
+            "jobsPosted": total_jobs_posted
+        })
+
+class SuperAdminCreateAdminView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != "superadmin":
+            return Response({"detail": "Forbidden"}, status=403)
+        
+        User = get_user_model()
+        username = request.data.get("username")
+        email = request.data.get("email")
+        password = request.data.get("password")
+        
+        if not username or not email or not password:
+            return Response({"detail": "Username, email, and password are required."}, status=400)
+        
+        if User.objects.filter(username=username).exists():
+            return Response({"detail": "Username already exists."}, status=400)
+            
+        if User.objects.filter(email=email).exists():
+            return Response({"detail": "Email already exists."}, status=400)
+            
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            role="admin"
+        )
+        
+        return Response({
+            "message": "Admin created successfully.",
+            "admin": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role
+            }
+        }, status=201)

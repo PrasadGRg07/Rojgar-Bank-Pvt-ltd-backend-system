@@ -8,7 +8,9 @@ from .views import (
     SuperAdminUserListView,
     SuperAdminGrantSpecialAccountView,
     SuperAdminRevokeSpecialAccountView,
-    SuperAdminRoleStatsView
+    SuperAdminRoleStatsView,
+    SuperAdminDashboardStatsView,
+    SuperAdminCreateAdminView
 )
 
 urlpatterns = [
@@ -21,4 +23,6 @@ urlpatterns = [
     path("users/<int:pk>/grant-special/", SuperAdminGrantSpecialAccountView.as_view(), name="superadmin-grant-special"),
     path("users/<int:pk>/revoke-special/", SuperAdminRevokeSpecialAccountView.as_view(), name="superadmin-revoke-special"),
     path("roles/stats/", SuperAdminRoleStatsView.as_view(), name="superadmin-role-stats"),
+    path("dashboard-stats/", SuperAdminDashboardStatsView.as_view(), name="superadmin-dashboard-stats"),
+    path("admins/create/", SuperAdminCreateAdminView.as_view(), name="superadmin-create-admin"),
 ]
