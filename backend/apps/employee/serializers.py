@@ -55,17 +55,38 @@ class JobSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     employee_email = serializers.EmailField(
-    source="user.email",
-    read_only=True,
+        source="user.email",
+        read_only=True,
     )
-    company = serializers.CharField(
-    source="user.company",
-    read_only=True,
-)
+    company = serializers.SerializerMethodField()
     employer_id = serializers.IntegerField(
         source="user.id",
         read_only=True,
     )
+    employer_profile_picture = serializers.SerializerMethodField()
+    employer_company_name = serializers.SerializerMethodField()
+
+    def get_company(self, obj):
+        profile = getattr(obj.user, 'employee_profile', None)
+        if profile and profile.company_name:
+            return profile.company_name
+        return getattr(obj.user, 'company', None) or obj.user.username
+
+    def get_employer_profile_picture(self, obj):
+        request = self.context.get('request')
+        profile = getattr(obj.user, 'employee_profile', None)
+        if profile and profile.profile_picture:
+            url = profile.profile_picture.url
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        return None
+
+    def get_employer_company_name(self, obj):
+        profile = getattr(obj.user, 'employee_profile', None)
+        if profile and profile.company_name:
+            return profile.company_name
+        return getattr(obj.user, 'company', None) or obj.user.username
 
     # Basic
     mainCategory = serializers.CharField(source="main_category", required=False, allow_blank=True)
@@ -138,6 +159,8 @@ class JobSerializer(serializers.ModelSerializer):
             "employee_name",
             "employee_email",
             "company",
+            "employer_profile_picture",
+            "employer_company_name",
 
             "title",
             "mainCategory",
@@ -213,6 +236,8 @@ class JobSerializer(serializers.ModelSerializer):
             "employee_name",
             "employee_email",
             "company",
+            "employer_profile_picture",
+            "employer_company_name",
             "reviewed_by",
             "reviewed_at",
             "created_at",
