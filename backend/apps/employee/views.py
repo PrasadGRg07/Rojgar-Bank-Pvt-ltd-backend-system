@@ -85,9 +85,9 @@ class SubmitJobForReviewView(APIView):
             user=request.user
         )
 
-        if job.status != "draft":
+        if job.status not in ("draft", "rejected"):
             return Response(
-                {"message": "Only draft jobs can be submitted."},
+                {"message": "Only draft or rejected jobs can be submitted for review."},
                 status=400,
             )
 
