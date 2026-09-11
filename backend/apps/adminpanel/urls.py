@@ -2,6 +2,7 @@ from django.urls import path
 from .views import( AdminLoginView, 
                    UserListCreateView, UserDetailView, 
                    PendingJobListView, ApprovedJobListView, AdminJobDetailView, RejectedJobListView, ApproveJobView, RejectJobView,
+                   AdminJobListCreateView,
                    EmployeeListView,
                    AdminSubscriptionListView, AdminForwardSubscriptionView, AdminRejectSubscriptionView, AdminDashboardStatsView, )
 
@@ -9,6 +10,7 @@ urlpatterns = [
     path("login/", AdminLoginView.as_view(), name="admin-login"),
     path("users/", UserListCreateView.as_view(), name="user-list-create"),
     path("users/<int:pk>/", UserDetailView.as_view(), name="user-detail"),
+    path("jobs/", AdminJobListCreateView.as_view(), name="admin-job-create"),
     path("jobs/pending/", PendingJobListView.as_view(), name="pending-jobs"),
     path("jobs/approved/", ApprovedJobListView.as_view(), name="approved-jobs"),
     path("jobs/<int:pk>/", AdminJobDetailView.as_view(), name="admin-job-detail"),

@@ -127,6 +127,23 @@ class EmployeeListView(ListAPIView):
             })
         return Response(data)
 
+class AdminJobListCreateView(ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = JobSerializer
+
+    def get_queryset(self):
+        return Job.objects.all().order_by("-created_at")
+
+    def perform_create(self, serializer):
+        # Admin posted jobs are automatically approved
+        status_val = self.request.data.get("status", "approved")
+        serializer.save(
+            user=self.request.user,
+            status=status_val,
+            reviewed_by=self.request.user,
+            reviewed_at=timezone.now()
+        )
+
 class AdminJobDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = JobSerializer
