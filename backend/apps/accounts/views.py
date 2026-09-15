@@ -455,3 +455,90 @@ class GoogleLoginView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"detail": f"An error occurred during Google Login: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"detail": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate and store OTP
+        otp = generate_otp()
+        user.otp_hash = make_password(otp)
+        user.otp_expires_at = timezone.now() + timezone.timedelta(minutes=10)
+        user.otp_attempts = 0
+        user.save()
+
+        try:
+            send_otp_email(user.email, otp, user.first_name)
+        except Exception as e:
+            error_message = str(e)
+            if "sender not verified" in error_message.lower():
+                error_message = "Your Brevo sender email is not verified. Please verify it in the Brevo dashboard."
+            elif "unauthorized" in error_message.lower():
+                error_message = "Your Brevo API key is invalid or unauthorized."
+            return Response({
+                "detail": f"Failed to send OTP email: {error_message}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": "OTP sent to your email."}, status=status.HTTP_200_OK)
+
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+        new_password = request.data.get("new_password")
+        confirm_password = request.data.get("confirm_password")
+
+        if not all([email, otp, new_password, confirm_password]):
+            return Response({"detail": "All fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_password != confirm_password:
+            return Response({"detail": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"detail": "User not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check attempts
+        if user.otp_attempts >= 3:
+            user.otp_hash = None
+            user.otp_expires_at = None
+            user.otp_attempts = 0
+            user.save()
+            return Response({
+                "detail": "Too many failed attempts. Please request a new OTP.",
+                "code": "otp_max_attempts"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check expiry
+        if not user.otp_expires_at or user.otp_expires_at < timezone.now():
+            return Response({
+                "detail": "OTP has expired. Please request a new one.",
+                "code": "otp_expired"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify OTP
+        if not user.otp_hash or not check_password(otp, user.otp_hash):
+            user.otp_attempts += 1
+            user.save()
+            remaining = 3 - user.otp_attempts
+            return Response({
+                "detail": f"Invalid OTP. {remaining} attempt(s) remaining.",
+                "code": "otp_invalid"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Success - reset password
+        user.set_password(new_password)
+        user.otp_hash = None
+        user.otp_expires_at = None
+        user.otp_attempts = 0
+        user.save()
+
+        return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
