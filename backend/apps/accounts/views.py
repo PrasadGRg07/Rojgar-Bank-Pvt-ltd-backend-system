@@ -542,3 +542,46 @@ class ResetPasswordView(APIView):
         user.save()
 
         return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+
+
+class VerifyPasswordOTPView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+
+        if not email or not otp:
+            return Response({"detail": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"detail": "User not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check attempts
+        if user.otp_attempts >= 3:
+            user.otp_hash = None
+            user.otp_expires_at = None
+            user.otp_attempts = 0
+            user.save()
+            return Response({
+                "detail": "Too many failed attempts. Please request a new OTP.",
+                "code": "otp_max_attempts"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check expiry
+        if not user.otp_expires_at or user.otp_expires_at < timezone.now():
+            return Response({
+                "detail": "OTP has expired. Please request a new one.",
+                "code": "otp_expired"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify OTP
+        if not user.otp_hash or not check_password(otp, user.otp_hash):
+            user.otp_attempts += 1
+            user.save()
+            remaining = 3 - user.otp_attempts
+            return Response({
+                "detail": f"Invalid OTP. {remaining} attempt(s) remaining.",
+                "code": "otp_invalid"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": "OTP verified successfully."}, status=status.HTTP_200_OK)

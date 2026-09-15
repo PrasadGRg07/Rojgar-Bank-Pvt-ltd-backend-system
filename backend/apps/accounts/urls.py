@@ -13,6 +13,7 @@ from .views import (
     GoogleLoginView,
     ForgotPasswordView,
     ResetPasswordView,
+    VerifyPasswordOTPView,
 )
 
 urlpatterns = [
@@ -29,5 +30,6 @@ urlpatterns = [
     path("resend-otp/", ResendOTPView.as_view(), name="resend_otp"),
     path("google-login/", GoogleLoginView.as_view(), name="google_login"),
     path("forgot-password/", ForgotPasswordView.as_view(), name="forgot_password"),
+    path("verify-password-otp/", VerifyPasswordOTPView.as_view(), name="verify_password_otp"),
     path("reset-password/", ResetPasswordView.as_view(), name="reset_password"),
 ]
