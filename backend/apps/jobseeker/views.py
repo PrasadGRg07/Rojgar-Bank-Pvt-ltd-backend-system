@@ -669,3 +669,25 @@ class PublicJobDetailView(generics.RetrieveAPIView):
     queryset = Job.objects.filter(status="approved")
 
 
+
+class PublicEmployerProfileView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        try:
+            profile = EmployeeProfile.objects.get(user__id=pk)
+            data = {
+                "id": profile.user.id,
+                "company_name": profile.company_name,
+                "email": profile.user.email,
+                "profile_picture": request.build_absolute_uri(profile.profile_picture.url) if profile.profile_picture else None,
+                "address": profile.address,
+                "website": profile.website,
+                "industry": profile.industry,
+                "company_size": profile.company_size,
+                "contact_person": profile.contact_person,
+                "intro": profile.intro,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except EmployeeProfile.DoesNotExist:
+            return Response({"error": "Employer profile not found"}, status=status.HTTP_404_NOT_FOUND)
