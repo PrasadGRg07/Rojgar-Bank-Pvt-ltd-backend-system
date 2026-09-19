@@ -6,7 +6,7 @@ from .views import( JobSeekerProfileView, SkillListCreateView,
                    CertificationDetailView, CertificationListCreateView, PortfolioListCreateView,
                    PortfolioDetailView, ResumeView, ResumeUploadView, ResumeDeleteView, AccountSettingsView, 
                    ApplyJobView, MyApplicationsView, ApplicationDetailView, JobListView, JobDetailView, SavedJobListView, SavedJobToggleView, EmployerProfileView,
-                   PublicJobListView, PublicJobDetailView, PublicEmployerProfileView)
+                   PublicJobListView, PublicJobDetailView, PublicEmployerProfileView, PublicEmployerListView)
 
 
 urlpatterns = [
@@ -39,5 +39,6 @@ urlpatterns = [
     path("jobs/public/", PublicJobListView.as_view(), name="public-job-list"),
     path("jobs/public/<int:pk>/", PublicJobDetailView.as_view(), name="public-job-detail"),
     path("employer/public/<int:pk>/", PublicEmployerProfileView.as_view(), name="public-employer-profile"),
+    path("employers/public/", PublicEmployerListView.as_view(), name="public-employers-list"),
     
 ]

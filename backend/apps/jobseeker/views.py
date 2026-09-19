@@ -691,3 +691,17 @@ class PublicEmployerProfileView(APIView):
             return Response(data, status=status.HTTP_200_OK)
         except EmployeeProfile.DoesNotExist:
             return Response({"error": "Employer profile not found"}, status=status.HTTP_404_NOT_FOUND)
+class PublicEmployerListView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        employers = EmployeeProfile.objects.exclude(profile_picture='').exclude(profile_picture__isnull=True)
+        data = []
+        for profile in employers:
+            data.append({
+                "id": profile.user.id,
+                "company_name": profile.company_name,
+                "profile_picture": request.build_absolute_uri(profile.profile_picture.url) if profile.profile_picture else None,
+            })
+        return Response(data, status=status.HTTP_200_OK)
