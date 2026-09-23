@@ -676,6 +676,9 @@ class PublicEmployerProfileView(APIView):
     def get(self, request, pk):
         try:
             profile = EmployeeProfile.objects.get(user__id=pk)
+            jobs = Job.objects.filter(user=profile.user, status="approved").order_by("-created_at")
+            jobs_data = JobSerializer(jobs, many=True, context={'request': request}).data
+            
             data = {
                 "id": profile.user.id,
                 "company_name": profile.company_name,
@@ -687,6 +690,7 @@ class PublicEmployerProfileView(APIView):
                 "company_size": profile.company_size,
                 "contact_person": profile.contact_person,
                 "intro": profile.intro,
+                "jobs": jobs_data,
             }
             return Response(data, status=status.HTTP_200_OK)
         except EmployeeProfile.DoesNotExist:
