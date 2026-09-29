@@ -21,6 +21,8 @@ urlpatterns = [
     path('api/blog/', include('apps.blog.urls')),
     path('api/training/', include('apps.training.urls')),
     path('api/events/', include('apps.events.urls')),
+    # Public site content APIs (About page, etc.)
+    path('api/content/', include('apps.content.urls')),
     # Messaging APIs
     path("api/messaging/", include("apps.messaging.urls")),
 ]

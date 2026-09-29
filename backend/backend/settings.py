@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "apps.blog",
     "apps.training",
     "apps.events",
+    "apps.content",
     "apps.superadmin",
     "apps.messaging",
 
