@@ -25,6 +25,8 @@ urlpatterns = [
     path('api/content/', include('apps.content.urls')),
     # Messaging APIs
     path("api/messaging/", include("apps.messaging.urls")),
+    # Public contact form submissions
+    path("api/contact/", include("apps.contact.urls")),
 ]
 
 # Serve uploaded media files during development

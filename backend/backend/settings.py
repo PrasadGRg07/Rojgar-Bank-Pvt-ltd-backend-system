@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "apps.content",
     "apps.superadmin",
     "apps.messaging",
+    "apps.contact",
 
 ]
 AUTH_USER_MODEL = "accounts.CustomUser"
