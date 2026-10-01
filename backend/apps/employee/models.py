@@ -254,6 +254,13 @@ class Subscription(models.Model):
         "professional": 30,
         "enterprise": 365,
     }
+    # Server-side price catalogue (NPR). The client never supplies the amount.
+    PLAN_AMOUNTS = {
+        "free": 0,
+        "basic": 999,
+        "professional": 2499,
+        "enterprise": 0,       # "Contact Sales" - priced manually
+    }
 
     user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="subscriptions"

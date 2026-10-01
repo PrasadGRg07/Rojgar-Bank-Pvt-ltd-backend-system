@@ -4,10 +4,12 @@ from .views import ( EmployeeDashboardView,
                     ApplicantsView, ApplicantDetailView, UpdateApplicationStatusView,
                     CandidateListView, CandidateDetailView, SubscriptionCreateView,
                     SavedCandidateListView, SavedCandidateToggleView,
-                    InterviewListCreateView, InterviewDetailView)
+                    InterviewListCreateView, InterviewDetailView,
+                    JobPostingStatusView)
 
 urlpatterns = [
     path('dashboard/', EmployeeDashboardView.as_view()),
+    path('job-posting-status/', JobPostingStatusView.as_view(), name='job-posting-status'),
     path('jobs/', JobListCreateView.as_view(), name='job-list-create'),
     path('jobs/<int:pk>/submit/', SubmitJobForReviewView.as_view(), name="submit-job-review", ),
     path("jobs/<int:pk>/", JobDetailView.as_view(), name="job-detail", ),

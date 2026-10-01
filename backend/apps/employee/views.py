@@ -7,7 +7,23 @@ from rest_framework import status, parsers
 from .models import EmployeeProfile, Job, Subscription, SavedCandidate
 from apps.jobseeker.models import JobApplication, JobSeekerProfile
 from .serializers import ( JobSerializer, EmployeeJobApplicationSerializer, CandidateProfileSerializer, SavedCandidateSerializer )
+from .plan_utils import (
+    get_job_posting_status,
+    get_effective_plan,
+    is_paid_user,
+    subscription_required_response,
+)
 from django.shortcuts import get_object_or_404
+
+# Statuses a client is allowed to request when creating a job. Anything else
+# (e.g. "approved") must only ever be set by an admin.
+CLIENT_SETTABLE_JOB_STATUSES = ("draft", "pending")
+
+# Server-side plan price catalogue (see Subscription.PLAN_AMOUNTS).
+PLAN_AMOUNTS = Subscription.PLAN_AMOUNTS
+
+
+
 class EmployeeDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -43,7 +59,23 @@ class EmployeeDashboardView(APIView):
             'total_applicants': total_applicants,
             'shortlisted_applicants': shortlisted_applicants,
             'recent_applications': recent_applications,
+            # Authoritative plan + job-posting entitlement for this employer.
+            'job_posting': get_job_posting_status(request.user),
         })
+
+
+class JobPostingStatusView(APIView):
+    """Single source of truth for the subscription popup and the job form.
+
+    The frontend must never infer entitlement from localStorage, otherwise a
+    refresh or a new tab could disagree with the database.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(get_job_posting_status(request.user))
+
 
 
 from django.contrib.auth import get_user_model
@@ -56,10 +88,39 @@ class JobListCreateView(ListCreateAPIView):
     def get_queryset(self):
         return Job.objects.filter(user=self.request.user).order_by("-created_at")
 
+    def create(self, request, *args, **kwargs):
+        """Block publishing once a Free Plan employer has used their job.
+
+        Drafts stay allowed so a Free Plan employer can keep working on a
+        posting; only publishing (``status="pending"``) is gated. This is a
+        server-side check -- the frontend gate is only a convenience.
+        """
+        requested_status = request.data.get("status") or "draft"
+
+        if requested_status not in CLIENT_SETTABLE_JOB_STATUSES:
+            return Response(
+                {"detail": f"Invalid status '{requested_status}'."},
+                status=400,
+            )
+
+        posting_status = get_job_posting_status(request.user)
+
+        if requested_status != "draft" and posting_status["requires_subscription"]:
+            return Response(
+                subscription_required_response(posting_status),
+                status=403,
+            )
+
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
+        # Never trust the client for review-controlled fields.
+        requested_status = self.request.data.get("status")
+        status = requested_status if requested_status in CLIENT_SETTABLE_JOB_STATUSES else "draft"
+
         job = serializer.save(
             user=self.request.user,
-            status="draft"
+            status=status
         )
         
         # Optionally send a notification if they submitted immediately, but usually it's draft.
@@ -89,6 +150,16 @@ class SubmitJobForReviewView(APIView):
             return Response(
                 {"message": "Only draft or rejected jobs can be submitted for review."},
                 status=400,
+            )
+
+        # Second gate: even a draft created before the limit was reached must
+        # not be publishable once the Free Plan job has been used.
+        posting_status = get_job_posting_status(request.user)
+
+        if posting_status["requires_subscription"]:
+            return Response(
+                subscription_required_response(posting_status),
+                status=403,
             )
 
         job.status = "pending"
@@ -208,11 +279,20 @@ class SubscriptionCreateView(APIView):
 
     def post(self, request):
         plan = request.data.get('plan')
-        amount = request.data.get('amount', 0)
         slip = request.FILES.get('payment_slip')
 
         if not plan:
             return Response({'detail': 'Plan is required.'}, status=400)
+
+        if plan not in dict(Subscription.PLAN_CHOICES):
+            return Response(
+                {'detail': f"Invalid plan '{plan}'."},
+                status=400,
+            )
+
+        # The amount is derived server-side from the plan catalogue so a client
+        # cannot self-declare what it paid.
+        amount = PLAN_AMOUNTS.get(plan, 0)
 
         sub = Subscription.objects.create(
             user=request.user,
