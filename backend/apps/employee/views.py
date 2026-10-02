@@ -290,6 +290,14 @@ class SubscriptionCreateView(APIView):
                 status=400,
             )
 
+        # The Free plan is the default entitlement and needs no approval, so it
+        # is never queued for review. Every account already has it.
+        if plan == 'free':
+            return Response(
+                {'detail': 'The Free plan does not require approval — your account already has it.'},
+                status=400,
+            )
+
         # The amount is derived server-side from the plan catalogue so a client
         # cannot self-declare what it paid.
         amount = PLAN_AMOUNTS.get(plan, 0)

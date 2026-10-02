@@ -334,6 +334,29 @@ class SubscriptionJobQuotaTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_free_plan_is_not_queued_for_review(self):
+        """Free is the default entitlement, so it must never reach the admin queue."""
+        response = self.client.post(
+            "/api/employee/subscriptions/", {"plan": "free"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(
+            Subscription.objects.filter(user=self.user, plan="free").exists()
+        )
+
+    def test_free_plan_submission_still_grants_default_entitlement(self):
+        """A rejected free submission must not affect what the employer can do."""
+        self.client.post(
+            "/api/employee/subscriptions/", {"plan": "free"}, format="json"
+        )
+
+        status = get_job_posting_status(self.user)
+
+        self.assertEqual(status["plan"], "free")
+        self.assertFalse(status["is_paid"])
+        self.assertTrue(status["can_post_job"])
+
     def test_job_posting_status_requires_authentication(self):
         self.client.credentials()
 
