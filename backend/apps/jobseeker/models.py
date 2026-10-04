@@ -208,8 +208,11 @@ class NotificationSettings(models.Model):
 class JobApplication(models.Model):
     STATUS_CHOICES = [
         ("pending", "Pending"),
+        ("applied", "Applied"),
         ("reviewing", "Reviewing"),
         ("shortlisted", "Shortlisted"),
+        ("interview", "Interview"),
+        ("offered", "Offered"),
         ("rejected", "Rejected"),
         ("hired", "Hired"),
     ]

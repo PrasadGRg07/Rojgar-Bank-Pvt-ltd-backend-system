@@ -226,8 +226,11 @@ class UpdateApplicationStatusView(APIView):
 
         allowed = [
             "pending",
+            "applied",
             "reviewing",
             "shortlisted",
+            "interview",
+            "offered",
             "rejected",
             "hired",
         ]
