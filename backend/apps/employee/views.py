@@ -408,3 +408,17 @@ class InterviewDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         from .models import Interview
         return Interview.objects.filter(job__user=self.request.user)
+
+    def perform_destroy(self, instance):
+        # Create notification for candidate when interview is cancelled
+        from apps.messaging.models import Notification
+        try:
+            Notification.objects.create(
+                recipient=instance.candidate,
+                title="Interview Cancelled",
+                message=f"Your interview for {instance.job.title} scheduled on {instance.date} at {instance.time} has been cancelled.",
+                notification_type="system"
+            )
+        except Exception:
+            pass
+        super().perform_destroy(instance)
