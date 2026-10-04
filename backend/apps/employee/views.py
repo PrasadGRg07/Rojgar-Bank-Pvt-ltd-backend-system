@@ -393,10 +393,15 @@ class InterviewListCreateView(generics.ListCreateAPIView):
         interview = serializer.save(interviewer=self.request.user)
         # Create notification for candidate
         from apps.messaging.models import Notification
+        msg = f"An interview has been scheduled for {interview.job.title} on {interview.date} at {interview.time}. Type: {interview.interview_type}"
+        if interview.meeting_link:
+            msg += f" Meeting Link: {interview.meeting_link}"
+        if interview.notes:
+            msg += f" Notes: {interview.notes}"
         Notification.objects.create(
             recipient=interview.candidate,
             title="Interview Scheduled",
-            message=f"An interview has been scheduled for {interview.job.title} on {interview.date} at {interview.time}.",
+            message=msg,
             notification_type="system"
         )
 
@@ -408,6 +413,25 @@ class InterviewDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         from .models import Interview
         return Interview.objects.filter(job__user=self.request.user)
+
+    def perform_update(self, serializer):
+        interview = serializer.save()
+        # Create notification for candidate when interview is updated
+        from apps.messaging.models import Notification
+        try:
+            msg = f"Your interview for {interview.job.title} has been updated. New schedule: {interview.date} at {interview.time}. Type: {interview.interview_type}"
+            if interview.meeting_link:
+                msg += f" Meeting Link: {interview.meeting_link}"
+            if interview.notes:
+                msg += f" Notes: {interview.notes}"
+            Notification.objects.create(
+                recipient=interview.candidate,
+                title="Interview Updated",
+                message=msg,
+                notification_type="system"
+            )
+        except Exception:
+            pass
 
     def perform_destroy(self, instance):
         # Create notification for candidate when interview is cancelled
